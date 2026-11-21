@@ -51,14 +51,14 @@
   }
 
   .dash {
-    --row-h: calc(var(--u) * 4.0);   /* one departure row */
+    --row-h: calc(var(--u) * 3.9);   /* one departure row */
     position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--gap);
     height: 100vh;
     width: 100vw;
-    padding: calc(var(--u) * 1.2) calc(var(--u) * 1.6) calc(var(--u) * 0.5);
+    padding: calc(var(--u) * 1.2) calc(var(--u) * 1.6) calc(var(--u) * 0.6);
     background:
       radial-gradient(ellipse at 15% 0%, rgba(79,209,197,0.07), transparent 55%),
       radial-gradient(ellipse at 100% 100%, rgba(244,169,74,0.05), transparent 55%),
@@ -431,18 +431,6 @@
   .dep-row.is-cancelled .dep__dest { color: var(--muted-dim); }
   .board__empty { font-size: calc(var(--u) * 2.0); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
 
-  .dash__footer {
-    flex: 0 0 auto;
-    margin-top: calc(var(--u) * -0.4);
-    display: flex;
-    align-items: center;
-    gap: calc(var(--u) * 1.5);
-    padding: 0 calc(var(--u) * 0.6);
-    color: var(--muted-dim);
-    font-size: calc(var(--u) * 1.2);
-  }
-  .footer__meta { margin-left: auto; text-align: right; line-height: 1.35; white-space: nowrap; }
-
   /* LIGHTNING ALERT (only shown when a strike is within 20 km) */
   .lightning-alert {
     display: none;
@@ -486,23 +474,6 @@
   .kani.is-party .k-acc-hat { display: none; }          /* party hat wins over the beanie */
   #curTemp, #kani, #clockTime { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   html, body { touch-action: manipulation; }   /* no double-tap zoom, so quick taps all count */
-
-  /* greeting pill, bottom-left in the footer */
-  .kani-greet {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    background: var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: calc(var(--u) * 1.4);
-    padding: calc(var(--u) * 0.2) calc(var(--u) * 1.0);
-    font-size: calc(var(--u) * 1.5);
-    font-weight: 600;
-    color: var(--text);
-  }
-  .kani-greet[hidden] { display: none; }
 
   /* speech bubble */
   .kani-bubble {
@@ -581,9 +552,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .kani-bubble { transition: none; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
     .lightning-alert { animation: none; }
     .tint-layer { transition: none; }
   }
@@ -649,11 +617,7 @@
 
   <div class="kani-bubble" id="kaniBubble" aria-live="polite"></div>
 
-  <footer class="dash__footer">
-    <div class="kani-greet" id="kaniGreet" hidden></div>
-    <!-- Data: FMI (CC BY 4.0), Open-Meteo, Fintraffic / digitraffic.fi (CC BY 4.0), HSL / Digitransit -->
-    <div class="footer__meta" id="updatedAt" title="Data: FMI, Open-Meteo, Fintraffic / digitraffic.fi, HSL">Starting up&hellip;</div>
-  </footer>
+  <!-- Data: FMI (CC BY 4.0), Open-Meteo, Fintraffic / digitraffic.fi (CC BY 4.0), HSL / Digitransit -->
 
 </div>
 
@@ -802,7 +766,7 @@
       77: ['snow', 'Snow grains'],
       80: ['drizzle', 'Light showers'],
       81: ['rain', 'Showers'],
-      82: ['thunder', 'Violent showers'],
+      82: ['rain', 'Violent showers'],
       85: ['snow', 'Snow showers'],
       86: ['snow', 'Heavy snow showers'],
       95: ['thunder', 'Thunderstorm'],
@@ -961,8 +925,10 @@
   }
 
   function renderLightning(strikes){
+    var wasActive = document.getElementById('lightningAlert').classList.contains('active');
     updateLightningAlert(strikes);
-    fitBoards();          // the alert banner takes room from the departures
+    // the alert banner takes room from the departures (and gives it back)
+    if (document.getElementById('lightningAlert').classList.contains('active') !== wasActive) renderDepartures();
   }
 
   loadLightning();
@@ -1136,10 +1102,6 @@
     weatherTimer = setTimeout(loadWeather, ms);
   }
 
-  function hhmm(ms){
-    return new Date(ms).toLocaleTimeString('en-GB', { timeZone:'Europe/Helsinki', hour:'2-digit', minute:'2-digit' });
-  }
-
   function loadWeather(){
     // FMI strips are fetched independently, so they still appear if
     // Open-Meteo is down.
@@ -1185,15 +1147,10 @@
         }
 
         lastWeatherOkAt = Date.now();
-        document.getElementById('updatedAt').textContent = 'Updated ' + hhmm(lastWeatherOkAt);
         scheduleWeather(10 * 60 * 1000);
       })
       .catch(function(){
-        // Say how old the numbers on screen are, and retry soon.
-        document.getElementById('updatedAt').textContent = lastWeatherOkAt
-          ? 'Update failed \u00b7 showing data from ' + hhmm(lastWeatherOkAt) + ' \u00b7 retrying\u2026'
-          : 'Update failed \u2014 retrying\u2026';
-        scheduleWeather(60 * 1000);
+        scheduleWeather(60 * 1000);   // retry soon
       });
   }
 
@@ -1327,7 +1284,6 @@
       // If this arrived before Open-Meteo's sunrise/sunset, redraw once they're
       // known so night hours don't get sun icons.
       pendingFmiHourly = lastSunrise ? null : { byTime: byTime, times: fromNow };
-      // (The footer's "Updated" time tracks the current-conditions panel only.)
     }).catch(function(){ /* Open-Meteo strips (if any) stay as-is */ });
   }
 
@@ -1336,7 +1292,7 @@
   // westbound ones (E to Kauklahti, U to Kirkkonummi...), each with its destination.
   var TRAIN_STATION = 'KIL';
   var TRAINS_REQUESTED = 20;
-  var TRAIN_ROWS = [5, 4];   // most rows: [towards Helsinki, westbound]; fewer if they don't fit
+  var TRAIN_ROWS = [5, 5];   // most rows: [towards Helsinki, westbound]; fewer if they don't fit
   var NIGHT_GAP_MS = 90 * 60 * 1000;   // a gap this long means "last train" / "first train"
   var TRAIN_URL = 'https://rata.digitraffic.fi/api/v1/live-trains/station/' + TRAIN_STATION +
     '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=' + TRAINS_REQUESTED + '&include_nonstopping=false';
@@ -1466,11 +1422,6 @@
     if (el.querySelector('.dep__late:not(:empty)')) el.classList.add('has-late');
     else el.classList.remove('has-late');
   }
-  function fitBoards(){
-    var a = document.getElementById('trainList'), b = document.getElementById('busList');
-    if (a) fitBoard(a);
-    if (b) fitBoard(b);
-  }
   // full redraw (rows can come back when there is room again)
   function renderDepartures(){
     if (typeof renderTrains === 'function') renderTrains();
@@ -1563,7 +1514,7 @@
   var BUS_MORNING_FROM = 6, BUS_MORNING_TO = 12;
   var BUS_ORDER_MORNING = ['E1826', 'E1827'];
   var BUS_ORDER_REST    = ['E1827', 'E1826'];
-  var BUS_ROWS = [5, 4];     // most rows: top stop, then the lower stop; fewer if they don't fit
+  var BUS_ROWS = [5, 5];     // most rows: top stop, then the lower stop; fewer if they don't fit
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
@@ -1645,7 +1596,7 @@
     else if ((busOkAt && now - busOkAt > 10 * 60 * 1000) || (!busOkAt && busError)) msg = 'Bus times unavailable · retrying';
     if (msg) { el.innerHTML = '<div class="board__empty">' + msg + '</div>'; return; }
     var html = '';
-    var hr = new Date(now).getHours();
+    var hr = helsinkiHour(new Date(now));
     var order = (hr >= BUS_MORNING_FROM && hr < BUS_MORNING_TO) ? BUS_ORDER_MORNING : BUS_ORDER_REST;
     for (var s = 0; s < order.length; s++){
       var shown = 0;
@@ -1687,7 +1638,6 @@
 
   /* ================= Kani extras (fun bits, all in Finnish) =================
      - the bunny in the weather panel dresses for the weather and sleeps at night
-     - a Finnish greeting pill appears on the map at certain times / special days
      - tap the temperature or the bunny: the bunny says something
      - tap the clock 5 times in a row: carrot and bunny rain
      - now and then (07-21) a bunny hops across the bottom of the screen
@@ -1741,43 +1691,12 @@
     return age > 13.77 && age < 15.77;
   }
 
-  // First snow of the winter: remembered on this tablet, celebrated that day.
-  function snowSeason(p){ return p.m >= 7 ? p.y : p.y - 1; }
-  function noteSnow(code){
-    if ([71, 73, 75, 77, 85, 86].indexOf(code) < 0) return;
-    var p = kaniNow(), key = 'kani-ensilumi-' + snowSeason(p);
-    try { if (!localStorage.getItem(key)) localStorage.setItem(key, kaniIso(p)); } catch (e) {}
-  }
-  function isFirstSnowDay(p){
-    try { return localStorage.getItem('kani-ensilumi-' + snowSeason(p)) === kaniIso(p); } catch (e) { return false; }
-  }
-
   // Called by the weather code whenever current conditions update.
   function kaniSetWeather(temp, kind, code){
     kaniState.temp = (typeof temp === 'number') ? temp : null;
     kaniState.kind = kind || '';
     kaniState.code = code;
-    noteSnow(code);
     updateKani();
-  }
-
-  function kaniGreeting(p){
-    if (isBirthday(p)) return 'Hyvää syntymäpäivää! 🎂';
-    if (p.m === 12 && p.d >= 24 && p.d <= 26) return 'Hyvää joulua! 🎄';
-    if ((p.m === 12 && p.d === 31 && p.h >= 18) || (p.m === 1 && p.d === 1)) return 'Hyvää uutta vuotta! 🎆';
-    if (isEaster(p)) return 'Hyvää pääsiäistä, kanit! 🐣';
-    if (isFirstSnowDay(p)) return 'Ensilumi! ❄️';
-    if (isGameDay(p) && p.h >= 7 && p.h < 21) return 'Pelipäivä! Tsemppiä! 🥅';
-    if (isPracticeDay(p) && p.h >= 7 && p.h < 20) return 'Treenipäivä! Muista luistimet ⛸️';
-    if (p.h >= 6 && p.h < 10) return (p.wd === 0 || p.wd === 6)
-      ? 'Hyvää viikonloppua, kanit! 🐰' : 'Huomenta, kanit! 🐰';
-    if (p.wd === 5 && p.h >= 14 && p.h < 20) return 'Perjantai! Viikonloppu alkaa 🎉';
-    if (p.h >= 21) return 'Hyvää yötä, kanit 🌙';
-    if (p.m === 12 && p.d < 24) {
-      var n = 24 - p.d;
-      return n === 1 ? 'Jouluun yksi yö! 🎄' : 'Jouluun ' + n + ' yötä 🎄';
-    }
-    return '';
   }
 
   function isKaniNight(p){ return p.h >= 22 || p.h < 6; }
@@ -1797,13 +1716,9 @@
     if (el) el.className = cls.join(' ');
 
     var dash = document.querySelector('.dash');
-    if (dash) { if (isEaster(p)) dash.classList.add('is-easter'); else dash.classList.remove('is-easter'); }
-
-    var pill = document.getElementById('kaniGreet');
-    if (pill) {
-      var g = kaniGreeting(p);
-      pill.textContent = g;
-      pill.hidden = !g;
+    if (dash && dash.classList.contains('is-easter') !== isEaster(p)) {
+      if (isEaster(p)) dash.classList.add('is-easter'); else dash.classList.remove('is-easter');
+      renderDepartures();   // the ears make the weather strips a little taller
     }
   }
 
