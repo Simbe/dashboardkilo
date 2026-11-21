@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B1220">
-<title>Kilo Weather Dashboard</title>
+<title>Kilon kotinäyttö</title>
 <link rel="icon" href="data:,"><!-- no favicon; stops the 404 in the console -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,7 @@
     --border:#223050;
     --text:#EAF2FF;
     --muted:#93A6C8;
-    --muted-dim:#62769A;
+    --muted-dim:#7D91B4;   /* 5.4:1 on the panels, readable from across the room */
     --amber:#F4A94A;
     --teal:#4FD1C5;
     --red:#E8646B;
@@ -65,6 +65,7 @@
       var(--bg);
   }
   .dash > * { position: relative; z-index: 1; }
+  .dash { transition: transform 1s ease; }   /* burn-in guard: see pixelShift() */
 
   .tint-layer {
     position: absolute;
@@ -115,7 +116,7 @@
     border-bottom: 1px solid var(--border);
   }
   .clock__date {
-    font-size: calc(var(--u) * 4.1);
+    font-size: calc(var(--u) * 3.8);
     line-height: 1;
     letter-spacing: -0.015em;
     white-space: nowrap;
@@ -219,10 +220,28 @@
     display: grid;
     grid-template-columns: repeat(3, auto);
     justify-content: space-between;
-    grid-gap: calc(var(--u) * 1.1) calc(var(--u) * 1.6);
+    grid-gap: calc(var(--u) * 0.9) calc(var(--u) * 1.6);
     border-left: 1px solid var(--panel-edge);
     padding-left: calc(var(--u) * 2.2);
   }
+  /* small line under the stats: cheapest electricity hour, day length */
+  .current__notes {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    gap: calc(var(--u) * 1.2);
+    font-size: calc(var(--u) * 1.45);
+    color: var(--muted-dim);
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .current__notes b { color: var(--muted); font-weight: 600; }
+  .price--cheap { color: var(--teal); }
+  .price--high { color: var(--amber); }
+  .price--vhigh { color: var(--red); }
+  /* flag day: a little Finnish flag after the date */
+  .flag { display: inline-block; height: 0.62em; width: 1.02em; margin-left: 0.35em; vertical-align: 0.05em; border-radius: 2px; }
   .stat__label .wi { display: inline-block; vertical-align: -0.15em; margin-right: 0.3em; stroke: var(--amber); }
   .stat {
     display: flex;
@@ -425,7 +444,10 @@
     font-size: calc(var(--u) * 2.8);
     font-weight: 600;
     color: var(--text);
+    min-width: calc(var(--u) * 7.4);   /* "22:58" and "14 min" end at the same place */
+    text-align: right;
   }
+  .dep__min { font-size: 0.55em; font-weight: 500; color: var(--muted); margin-left: 0.2em; }
   /* live-estimate column: only takes room on a board that has an estimate
      right now, and then on every row of that board so the times line up */
   .dep__late:empty { display: none; }
@@ -440,6 +462,30 @@
   .dep-row.is-cancelled .dep__time { text-decoration: line-through; color: var(--muted-dim); }
   .dep-row.is-cancelled .dep__dest { color: var(--muted-dim); }
   .board__empty { font-size: calc(var(--u) * 2.0); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
+
+  /* small amber dot: the weather on screen is old (fetches have been failing) */
+  .stale-dot {
+    position: absolute;
+    top: calc(var(--u) * 1);
+    right: calc(var(--u) * 1);
+    width: calc(var(--u) * 1.1);
+    height: calc(var(--u) * 1.1);
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 0 3px rgba(244,169,74,0.2);
+  }
+  .stale-dot[hidden] { display: none; }
+
+  /* night: dim everything (easier on the eyes, and on the AMOLED screen) */
+  .night-dim {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 60s linear;
+  }
 
   /* LIGHTNING ALERT (only shown when a strike is within 20 km) */
   .lightning-alert {
@@ -482,10 +528,20 @@
   .kani.is-rain .k-acc-umbrella, .kani.is-snow .k-acc-snow,
   .kani.is-sunny .k-acc-glasses, .kani.is-party .k-acc-party,
   .kani.is-ringette .k-acc-ringette,
+  .kani.is-santa .k-acc-santa, .kani.is-rosette .k-acc-rosette, .kani.is-vappu .k-acc-vappu,
+  .kani.is-juhannus .k-acc-wreath, .kani.is-halloween .k-acc-pumpkin,
   .kani.is-sleep .k-acc-sleep, .kani.is-sleep .k-eyes-closed { display: inline; }
   .kani.is-sleep .k-eyes-open { display: none; }
   .kani.is-party .k-acc-hat { display: none; }          /* party hat wins over the beanie */
-  #curTemp, #kani, #clockTime, #clockDate { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .kani.is-santa .k-acc-hat { display: none; }          /* Santa hat replaces the beanie */
+  .kani.is-party .k-acc-santa, .kani.is-party .k-acc-wreath { display: none; }
+
+  /* snow pile along the bottom of the weather panel: grows when it snows,
+     stays while it's freezing, melts when it gets above zero */
+  .snowpile { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * 1.1); pointer-events: none; }
+  .snowpile svg { display: block; width: 100%; height: 100%; }
+  .snowpile[hidden] { display: none; }
+  #curTemp, #kani, #clockTime, #clockDate { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-touch-callout: none; }
   html, body { touch-action: manipulation; }   /* no double-tap zoom, so quick taps all count */
 
   /* speech bubble */
@@ -653,47 +709,54 @@
   <div class="lightning-alert" id="lightningAlert">
     <span class="lightning-alert__icon"><svg class="wi" viewBox="-1 -1 26 26"><polygon class="wi-bolt" points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
     <div>
-      <div class="lightning-alert__text" id="lightningAlertText">Lightning nearby</div>
+      <div class="lightning-alert__text" id="lightningAlertText">Salamoi lähellä</div>
       <div class="lightning-alert__sub" id="lightningAlertSub">&mdash;</div>
     </div>
   </div>
 
   <section class="panel current-panel">
+    <span class="stale-dot" id="staleDot" hidden title="Säätiedot eivät ole päivittyneet"></span>
+    <div class="snowpile" id="snowPile" hidden><svg viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10V6Q6 2 14 5T30 4T46 6T62 3T80 5T98 4T116 6T134 3T152 5T170 4T188 6T200 4V10Z" fill="#E6EEF9" opacity=".9"/></svg></div>
     <div class="current__main">
       <div class="current__top">
         <div class="current__icon" id="curIcon"><svg class="wi" viewBox="-1 -1 26 26"><path class="wi-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a4 4 0 0 0 0-8z"/></svg></div>
         <div class="current__temp num" id="curTemp">--&deg;</div>
       </div>
       <div class="current__cond" id="curCond">&mdash;</div>
-      <div class="current__feels">Feels like <span class="num" id="curFeels">--&deg;</span></div>
+      <div class="current__feels">Tuntuu kuin <span class="num" id="curFeels">--&deg;</span></div>
       <div class="kani" id="kani" title="Kani"></div>
     </div>
     <div class="current__grid">
-      <div class="stat"><span class="stat__label">Wind</span><span class="stat__value num" id="curWind">&ndash;</span></div>
-      <div class="stat"><span class="stat__label">Gusts</span><span class="stat__value num" id="curGust">&ndash;</span></div>
-      <div class="stat"><span class="stat__label">Humidity</span><span class="stat__value num" id="curHumidity">&ndash;</span></div>
-      <div class="stat"><span class="stat__label">Pressure</span><span class="stat__value num" id="curPressure">&ndash;</span></div>
-      <div class="stat"><span class="stat__label"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M6.5 19a5.5 5.5 0 0 1 11 0M12 3v6M9.3 5.6 12 3l2.7 2.6M3.8 12.6l1.5 1.1M20.2 12.6l-1.5 1.1"/></svg>Sunrise</span><span class="stat__value num tnum" id="headerSunrise">--:--</span></div>
-      <div class="stat"><span class="stat__label"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M6.5 19a5.5 5.5 0 0 1 11 0M12 3v6M9.3 6.4 12 9l2.7-2.6M3.8 12.6l1.5 1.1M20.2 12.6l-1.5 1.1"/></svg>Sunset</span><span class="stat__value num tnum" id="headerSunset">--:--</span></div>
+      <div class="stat"><span class="stat__label">Tuuli</span><span class="stat__value num" id="curWind">&ndash;</span></div>
+      <div class="stat"><span class="stat__label">Puuskat</span><span class="stat__value num" id="curGust">&ndash;</span></div>
+      <div class="stat"><span class="stat__label">Kosteus</span><span class="stat__value num" id="curHumidity">&ndash;</span></div>
+      <div class="stat"><span class="stat__label">Sähkö nyt</span><span class="stat__value num" id="curPrice">&ndash;</span></div>
+      <div class="stat"><span class="stat__label"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M6.5 19a5.5 5.5 0 0 1 11 0M12 3v6M9.3 5.6 12 3l2.7 2.6M3.8 12.6l1.5 1.1M20.2 12.6l-1.5 1.1"/></svg>Nousee</span><span class="stat__value num tnum" id="headerSunrise">--:--</span></div>
+      <div class="stat"><span class="stat__label"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M6.5 19a5.5 5.5 0 0 1 11 0M12 3v6M9.3 6.4 12 9l2.7-2.6M3.8 12.6l1.5 1.1M20.2 12.6l-1.5 1.1"/></svg>Laskee</span><span class="stat__value num tnum" id="headerSunset">--:--</span></div>
+      <div class="current__notes"><span id="cheapHour"></span><span id="dayLength"></span></div>
     </div>
   </section>
 
-  <section class="strip hourly" id="hourlyStrip" aria-label="Next hours"></section>
-  <section class="strip daily" id="dailyStrip" aria-label="Next 7 days"></section>
+  <section class="strip hourly" id="hourlyStrip" aria-label="Seuraavat tunnit"></section>
+  <section class="strip daily" id="dailyStrip" aria-label="Seuraavat 7 päivää"></section>
 
   <div class="train-notice" id="trainNotice" hidden>
     <span class="train-notice__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8.5 17.5 6.5 21.5M15.5 17.5l2 4M7.6 19.5h8.8"/></svg></span>
     <span class="train-notice__text" id="trainNoticeText"></span>
   </div>
+  <div class="train-notice" id="busNotice" hidden>
+    <span class="train-notice__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M4 7h16M8 14.5h.01M16 14.5h.01M7 18v2.5M17 18v2.5"/></svg></span>
+    <span class="train-notice__text" id="busNoticeText"></span>
+  </div>
 
   <section class="departures">
-    <div class="board" aria-label="Trains from Kilo">
-      <div class="board__title"><span class="board__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8.5 17.5 6.5 21.5M15.5 17.5l2 4M7.6 19.5h8.8"/></svg></span>Kilo station</div>
-      <div class="board__rows" id="trainList"><div class="board__empty">Loading trains&hellip;</div></div>
+    <div class="board" aria-label="Junat Kilosta">
+      <div class="board__title"><span class="board__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8.5 17.5 6.5 21.5M15.5 17.5l2 4M7.6 19.5h8.8"/></svg></span>Kilon asema</div>
+      <div class="board__rows" id="trainList"><div class="board__empty">Ladataan junia&hellip;</div></div>
     </div>
-    <div class="board" aria-label="Buses from Trillakatu">
+    <div class="board" aria-label="Bussit Trillakadulta">
       <div class="board__title"><span class="board__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M4 7h16M8 14.5h.01M16 14.5h.01M7 18v2.5M17 18v2.5"/></svg></span>Trillakatu</div>
-      <div class="board__rows" id="busList"><div class="board__empty">Loading buses&hellip;</div></div>
+      <div class="board__rows" id="busList"><div class="board__empty">Ladataan busseja&hellip;</div></div>
     </div>
   </section>
 
@@ -702,10 +765,12 @@
   <!-- Data: FMI (CC BY 4.0), Open-Meteo, Fintraffic / digitraffic.fi (CC BY 4.0), HSL / Digitransit -->
 
 </div>
+<div class="night-dim" id="nightDim"></div>
 
 <script>
 (function(){
 
+  var VERSION = '3.0';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -818,7 +883,7 @@
   }
 
   function degToCardinal(deg){
-    var dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    var dirs = ['P','KO','I','KA','E','LO','L','LU'];   // pohjoinen, koillinen, itä, kaakko...
     return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
   }
 
@@ -826,34 +891,34 @@
   function wmoInfo(code, isDay){
     var day = isDay !== 0;
     var map = {
-      0:  [day ? 'clear-day' : 'clear-night', 'Clear sky'],
-      1:  [day ? 'part-day' : 'part-night', 'Mainly clear'],
-      2:  [day ? 'part-day' : 'part-night', 'Partly cloudy'],
-      3:  ['cloud', 'Overcast'],
-      45: ['fog', 'Fog'],
-      48: ['fog', 'Freezing fog'],
-      51: ['drizzle', 'Light drizzle'],
-      53: ['drizzle', 'Drizzle'],
-      55: ['rain', 'Dense drizzle'],
-      56: ['sleet', 'Freezing drizzle'],
-      57: ['sleet', 'Freezing drizzle'],
-      61: ['rain', 'Light rain'],
-      63: ['rain', 'Rain'],
-      65: ['rain', 'Heavy rain'],
-      66: ['sleet', 'Freezing rain'],
-      67: ['sleet', 'Freezing rain'],
-      71: ['snow', 'Light snow'],
-      73: ['snow', 'Snow'],
-      75: ['snow', 'Heavy snow'],
-      77: ['snow', 'Snow grains'],
-      80: ['drizzle', 'Light showers'],
-      81: ['rain', 'Showers'],
-      82: ['rain', 'Violent showers'],
-      85: ['snow', 'Snow showers'],
-      86: ['snow', 'Heavy snow showers'],
-      95: ['thunder', 'Thunderstorm'],
-      96: ['thunder', 'Thunderstorm, hail'],
-      99: ['thunder', 'Thunderstorm, hail']
+      0:  [day ? 'clear-day' : 'clear-night', 'Selkeää'],
+      1:  [day ? 'part-day' : 'part-night', 'Melko selkeää'],
+      2:  [day ? 'part-day' : 'part-night', 'Puolipilvistä'],
+      3:  ['cloud', 'Pilvistä'],
+      45: ['fog', 'Sumua'],
+      48: ['fog', 'Jäätävää sumua'],
+      51: ['drizzle', 'Heikkoa tihkua'],
+      53: ['drizzle', 'Tihkusadetta'],
+      55: ['rain', 'Voimakasta tihkua'],
+      56: ['sleet', 'Jäätävää tihkua'],
+      57: ['sleet', 'Jäätävää tihkua'],
+      61: ['rain', 'Heikkoa sadetta'],
+      63: ['rain', 'Sadetta'],
+      65: ['rain', 'Rankkaa sadetta'],
+      66: ['sleet', 'Jäätävää sadetta'],
+      67: ['sleet', 'Jäätävää sadetta'],
+      71: ['snow', 'Heikkoa lumisadetta'],
+      73: ['snow', 'Lumisadetta'],
+      75: ['snow', 'Kovaa lumisadetta'],
+      77: ['snow', 'Lumijyväsiä'],
+      80: ['drizzle', 'Heikkoja kuuroja'],
+      81: ['rain', 'Sadekuuroja'],
+      82: ['rain', 'Rankkoja kuuroja'],
+      85: ['snow', 'Lumikuuroja'],
+      86: ['snow', 'Kovia lumikuuroja'],
+      95: ['thunder', 'Ukkosta'],
+      96: ['thunder', 'Ukkosta ja rakeita'],
+      99: ['thunder', 'Ukkosta ja rakeita']
     };
     if (map[code]) return map[code];
     return ['cloud', '\u2014'];
@@ -863,15 +928,65 @@
     return d.toLocaleTimeString('en-GB', { timeZone:'Europe/Helsinki', hour:'2-digit', minute:'2-digit' });
   }
 
+  /* ---------- Flag days (official and customary, Finland) ---------- */
+  var FLAG_DAYS = {
+    '02-05': 'J. L. Runebergin päivä', '02-28': 'Kalevalan päivä',
+    '03-19': 'Minna Canthin päivä, tasa-arvon päivä', '04-09': 'Mikael Agricolan päivä, suomen kielen päivä',
+    '04-27': 'Kansallinen veteraanipäivä', '05-01': 'Vappu, suomalaisen työn päivä', '05-09': 'Eurooppa-päivä',
+    '05-12': 'J. V. Snellmanin päivä, suomalaisuuden päivä', '06-04': 'Puolustusvoimain lippujuhlan päivä',
+    '07-06': 'Eino Leinon päivä, runon ja suven päivä', '10-01': 'Miina Sillanpään ja kansalaisvaikuttamisen päivä',
+    '10-10': 'Aleksis Kiven päivä, suomalaisen kirjallisuuden päivä', '10-24': 'YK:n päivä',
+    '11-06': 'Ruotsalaisuuden päivä', '11-20': 'Lapsen oikeuksien päivä', '12-06': 'Itsenäisyyspäivä',
+    '12-08': 'Jean Sibeliuksen päivä, suomalaisen musiikin päivä'
+  };
+  // the n-th given weekday (0 = Sunday) of a month; n = -1: the last one
+  function nthWeekday(y, m, wd, n){
+    if (n > 0){
+      var first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+      return 1 + ((wd - first + 7) % 7) + (n - 1) * 7;
+    }
+    var lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    var lastWd = new Date(Date.UTC(y, m - 1, lastDay)).getUTCDay();
+    return lastDay - ((lastWd - wd + 7) % 7);
+  }
+  // today's flag day name in Helsinki, or ''
+  function flagDay(){
+    var parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Helsinki', year: 'numeric', month: '2-digit', day: '2-digit' })
+      .format(new Date()).split('-');
+    var y = +parts[0], m = +parts[1], d = +parts[2];
+    var fixed = FLAG_DAYS[parts[1] + '-' + parts[2]];
+    if (fixed) return fixed;
+    if (m === 5 && d === nthWeekday(y, 5, 0, 2)) return 'Äitienpäivä';
+    if (m === 5 && d === nthWeekday(y, 5, 0, 3)) return 'Kaatuneitten muistopäivä';
+    if (m === 6 && d >= 20 && d <= 26 && new Date(Date.UTC(y, 5, d)).getUTCDay() === 6) return 'Juhannuspäivä, Suomen lipun päivä';
+    if (m === 8 && d === nthWeekday(y, 8, 6, -1)) return 'Suomen luonnon päivä';
+    if (m === 11 && d === nthWeekday(y, 11, 0, 2)) return 'Isänpäivä';
+    return '';
+  }
+  var FLAG_SVG = '<svg class="flag" viewBox="0 0 18 11" aria-hidden="true"><rect width="18" height="11" fill="#fff"/><rect x="5" width="3" height="11" fill="#1F4FA3"/><rect y="4" width="18" height="3" fill="#1F4FA3"/></svg>';
+
   /* ---------- Clock ---------- */
   function tickClock(){
     var now = new Date();
     var p = now.toLocaleTimeString('en-GB', { timeZone:'Europe/Helsinki', hour:'2-digit', minute:'2-digit', second:'2-digit' }).split(':');
-    var weekday = now.toLocaleDateString('en-GB', { timeZone:'Europe/Helsinki', weekday:'long' });
-    var dayMonth = now.toLocaleDateString('en-GB', { timeZone:'Europe/Helsinki', day:'numeric', month:'long' });
+    var weekday = now.toLocaleDateString('fi-FI', { timeZone:'Europe/Helsinki', weekday:'long' });
+    weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);      // "lauantai" -> "Lauantai"
+    var dayMonth = now.toLocaleDateString('fi-FI', { timeZone:'Europe/Helsinki', day:'numeric', month:'long' });   // "21. marraskuuta" 
     document.getElementById('clockTime').innerHTML = p[0] + ':' + p[1] + '<span class="clock__sec">' + p[2] + '</span>';
-    document.getElementById('clockDate').innerHTML =
-      '<span class="clock__weekday">' + weekday + '</span> <span class="clock__daymonth">' + dayMonth + '</span>';
+    var html = '<span class="clock__weekday">' + weekday + '</span> <span class="clock__daymonth">' + dayMonth + '</span>' +
+      (flagDay() ? FLAG_SVG : '');
+    var dateEl = document.getElementById('clockDate');
+    if (dateEl.innerHTML !== html) { dateEl.innerHTML = html; fitHeader(); }
+  }
+  // a long date (+ flag) must never run into the clock: shrink it if it would
+  function fitHeader(){
+    var d = document.getElementById('clockDate'), c = document.getElementById('clockTime');
+    d.style.fontSize = '';
+    var size = parseFloat(window.getComputedStyle(d).fontSize), guard = 20;
+    while (d.getBoundingClientRect().right > c.getBoundingClientRect().left - 16 && guard-- > 0){
+      size *= 0.95;
+      d.style.fontSize = size.toFixed(1) + 'px';
+    }
   }
   tickClock();
   setInterval(tickClock, 1000);
@@ -997,10 +1112,10 @@
     if (nearest){
       el.classList.add('active');
       document.getElementById('lightningAlertText').textContent =
-        'Lightning within ' + LIGHTNING_ALERT_RADIUS_KM + ' km';
-      var ageLabel = nearest.ageMin < 1 ? 'just now' : Math.round(nearest.ageMin) + ' min ago';
+        'Salamoi ' + LIGHTNING_ALERT_RADIUS_KM + ' km:n säteellä';
+      var ageLabel = nearest.ageMin < 1 ? 'juuri nyt' : Math.round(nearest.ageMin) + ' min sitten';
       document.getElementById('lightningAlertSub').textContent =
-        'Nearest strike ' + nearest.dist.toFixed(1) + ' km away \u00B7 ' + ageLabel;
+        'Lähin isku ' + nearest.dist.toFixed(1).replace('.', ',') + ' km päässä \u00B7 ' + ageLabel;
     } else {
       el.classList.remove('active');
     }
@@ -1064,6 +1179,24 @@
     updateTint(now, sunrise, sunset);
   }
 
+  // "Päivä 6 h 53 min, −3 min": today's daylight and the change from yesterday
+  function renderDayLength(daily, di, off){
+    var el = document.getElementById('dayLength');
+    function len(i){
+      if (i < 0 || !daily.sunrise[i] || !daily.sunset[i]) return null;
+      return (omDate(daily.sunset[i], off) - omDate(daily.sunrise[i], off)) / 60000;
+    }
+    var today = len(di), yesterday = len(di - 1);
+    if (today === null) { el.textContent = ''; return; }
+    var h = Math.floor(today / 60), m = Math.round(today - h * 60);
+    var txt = 'Päivä <b>' + h + ' h ' + m + ' min</b>';
+    if (yesterday !== null) {
+      var diff = Math.round(today - yesterday);
+      txt += ', ' + (diff > 0 ? '+' + diff : diff < 0 ? '\u2212' + (-diff) : '\u00b10') + ' min';
+    }
+    el.innerHTML = txt;
+  }
+
   /* ---------- Day / night tint ---------- */
   function updateTint(now, sunrise, sunset){
     var duskWindow = 45 * 60 * 1000; // 45 min soft transition either side
@@ -1091,10 +1224,10 @@
   /* ---------- Weather data ---------- */
   var WEATHER_URL = 'https://api.open-meteo.com/v1/forecast'
     + '?latitude=' + LAT + '&longitude=' + LON
-    + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,is_day'
+    + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day'
     + '&hourly=temperature_2m,precipitation_probability,weather_code'
     + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
-    + '&timezone=Europe%2FHelsinki&forecast_days=7&wind_speed_unit=ms';
+    + '&timezone=Europe%2FHelsinki&forecast_days=7&past_days=1&wind_speed_unit=ms';   // yesterday: for the day-length change
 
   // Builds a "YYYY-MM-DDTHH" prefix for the current moment in Europe/Helsinki
   // wall-clock time, matching Open-Meteo's naive local timestamps exactly —
@@ -1112,9 +1245,13 @@
     return obj.year + '-' + obj.month + '-' + obj.day + 'T' + hh;
   }
 
+  // the next few hours, for the bunny's clothing tip: [{ kind, pop }]
+  var nextHours = [];
+
   function renderHourly(hourly, offsetSec){
     var container = document.getElementById('hourlyStrip');
     container.innerHTML = '';
+    nextHours = [];
     var nowPrefix = helsinkiHourPrefixNow();
     var startIdx = 0;
     for (var i = 0; i < hourly.time.length; i++){
@@ -1124,10 +1261,11 @@
     for (var j = startIdx; j < hourly.time.length && count < 9; j++, count++){
       var t = omDate(hourly.time[j], offsetSec);
       var info = wmoInfo(hourly.weather_code[j], isDayAt(t) ? 1 : 0);
+      if (count < 4) nextHours.push({ kind: info[0], pop: hourly.precipitation_probability[j] });
       var item = document.createElement('div');
       item.className = count === 0 ? 'strip-item is-now' : 'strip-item';
       item.innerHTML =
-        '<div class="strip-item__label">' + (count === 0 ? 'Now' : fmtTime(t)) + '</div>' +
+        '<div class="strip-item__label">' + (count === 0 ? 'Nyt' : fmtTime(t)) + '</div>' +
         '<div class="strip-item__icon">' + svgIcon(info[0]) + '</div>' +
         '<div class="strip-item__temp">' + Math.round(hourly.temperature_2m[j]) + '&deg;</div>' +
         popMarkup(hourly.precipitation_probability[j]);
@@ -1135,16 +1273,17 @@
     }
   }
 
-  function renderDaily(daily){
+  function renderDaily(daily, first){
     var container = document.getElementById('dailyStrip');
     container.innerHTML = '';
-    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    for (var i = 0; i < daily.time.length && i < 7; i++){
+    var dayNames = ['Su','Ma','Ti','Ke','To','Pe','La'];
+    for (var n = 0; n < 7 && (first || 0) + n < daily.time.length; n++){
+      var i = (first || 0) + n;
       var d = new Date(daily.time[i] + 'T12:00:00');
       var info = wmoInfo(daily.weather_code[i], 1);
-      var label = i === 0 ? 'Today' : dayNames[d.getDay()];
+      var label = n === 0 ? 'Tänään' : dayNames[d.getDay()];
       var item = document.createElement('div');
-      item.className = label === 'Today' ? 'strip-item is-now' : 'strip-item';
+      item.className = n === 0 ? 'strip-item is-now' : 'strip-item';
       item.innerHTML =
         '<div class="strip-item__label">' + label + '</div>' +
         '<div class="strip-item__icon">' + svgIcon(info[0]) + '</div>' +
@@ -1203,7 +1342,7 @@
         document.getElementById('curCond').textContent = info[1];
         document.getElementById('curTemp').innerHTML = Math.round(cur.temperature_2m) + '&deg;';
         document.getElementById('curFeels').innerHTML = Math.round(cur.apparent_temperature) + '&deg;';
-        kaniSetWeather(cur.temperature_2m, info[0], cur.weather_code);
+        kaniSetWeather(cur.temperature_2m, info[0], cur.weather_code, cur.apparent_temperature);
 
         var windHtml = withUnit(cur.wind_speed_10m, 'm/s');
         if (typeof cur.wind_direction_10m === 'number' && !isNaN(cur.wind_direction_10m)){
@@ -1213,17 +1352,20 @@
         document.getElementById('curWind').innerHTML = windHtml;
         document.getElementById('curGust').innerHTML = withUnit(cur.wind_gusts_10m, 'm/s');
         document.getElementById('curHumidity').innerHTML = withUnit(cur.relative_humidity_2m, '%');
-        document.getElementById('curPressure').innerHTML = withUnit(cur.pressure_msl, 'hPa');
         fitKani();
 
+        // daily data starts with yesterday (past_days=1): find today
+        var di = data.daily.time.indexOf(helsinkiDateKey(new Date()));
+        if (di < 0) di = 0;
         // sun times first, so hourly icons can pick day/night variants
-        updateSunArc(omDate(data.daily.sunrise[0], off), omDate(data.daily.sunset[0], off));
+        updateSunArc(omDate(data.daily.sunrise[di], off), omDate(data.daily.sunset[di], off));
+        renderDayLength(data.daily, di, off);
         // Open-Meteo strips are only a fallback: paint them if FMI hasn't
         // succeeded recently, otherwise the strips would flip between the two
         // sources every refresh.
         if (Date.now() - fmiStripsOkAt > 30 * 60 * 1000) {
           renderHourly(data.hourly, off);
-          renderDaily(data.daily);
+          renderDaily(data.daily, di);
         } else if (pendingFmiHourly) {
           renderHourlyFmi(pendingFmiHourly.byTime, pendingFmiHourly.times);
           pendingFmiHourly = null;
@@ -1260,6 +1402,7 @@
   function renderHourlyFmi(byTime, futureTimes){
     var container = document.getElementById('hourlyStrip');
     container.innerHTML = '';
+    nextHours = [];
     var count = 0;
     for (var j = 0; j < futureTimes.length && count < 9; j++, count++){
       var iso = futureTimes[j];
@@ -1268,10 +1411,11 @@
       var icon = svgIcon(nightify(fmiSymbolIcon(entry.WeatherSymbol3), isDayAt(d)));
       var temp = Math.round(entry.Temperature);
       var pop = (typeof entry.PoP === 'number') ? Math.round(entry.PoP) : null;
+      if (count < 4) nextHours.push({ kind: fmiSymbolIcon(entry.WeatherSymbol3), pop: pop });
       var item = document.createElement('div');
       item.className = count === 0 ? 'strip-item is-now' : 'strip-item';
       item.innerHTML =
-        '<div class="strip-item__label">' + (count === 0 ? 'Now' : fmtTime(d)) + '</div>' +
+        '<div class="strip-item__label">' + (count === 0 ? 'Nyt' : fmtTime(d)) + '</div>' +
         '<div class="strip-item__icon">' + icon + '</div>' +
         '<div class="strip-item__temp">' + temp + '&deg;</div>' +
         popMarkup(pop);
@@ -1301,7 +1445,7 @@
 
     var container = document.getElementById('dailyStrip');
     container.innerHTML = '';
-    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var dayNames = ['Su','Ma','Ti','Ke','To','Pe','La'];
     var todayKey = helsinkiDateKey(new Date());
     var count = 0;
     for (var k = 0; k < order.length && count < 7; k++){
@@ -1315,9 +1459,9 @@
       var icon = svgIcon(fmiSymbolIcon(day.symbol));
       var parts = key.split('-');
       var dateObj = new Date(parseInt(parts[0],10), parseInt(parts[1],10) - 1, parseInt(parts[2],10));
-      var label = key === todayKey ? 'Today' : dayNames[dateObj.getDay()];
+      var label = key === todayKey ? 'Tänään' : dayNames[dateObj.getDay()];
       var item = document.createElement('div');
-      item.className = label === 'Today' ? 'strip-item is-now' : 'strip-item';
+      item.className = key === todayKey ? 'strip-item is-now' : 'strip-item';
       item.innerHTML =
         '<div class="strip-item__label">' + label + '</div>' +
         '<div class="strip-item__icon">' + icon + '</div>' +
@@ -1369,6 +1513,74 @@
       pendingFmiHourly = lastSunrise ? null : { byTime: byTime, times: fromNow };
     }).catch(function(){ /* Open-Meteo strips (if any) stay as-is */ });
   }
+
+  /* ---------- Electricity spot price (spot-hinta.fi: free, no key) ---------- */
+  // Today's and (from ~14:00) tomorrow's prices in 15-minute slots, VAT
+  // included; the electricity company's margin and transfer fees are not.
+  var PRICE_URL = 'https://api.spot-hinta.fi/TodayAndDayForward';
+  var PRICE_CHEAP = 5, PRICE_HIGH = 10, PRICE_VHIGH = 20;   // c/kWh: colour limits
+  var priceSlots = [], priceTimer = null;
+
+  function loadPrices(){
+    fetch(PRICE_URL).then(function(r){
+      if (!r.ok) throw new Error('price HTTP ' + r.status);
+      return r.json();
+    }).then(function(list){
+      var out = [];
+      for (var i = 0; i < (list || []).length; i++){
+        var t = Date.parse(list[i].DateTime), p = list[i].PriceWithTax;
+        if (!isNaN(t) && typeof p === 'number') out.push({ t: t, p: p * 100 });   // EUR -> cents
+      }
+      out.sort(function(a, b){ return a.t - b.t; });
+      if (out.length) priceSlots = out;
+      renderPrice();
+      schedulePrices(60 * 60 * 1000);
+    }).catch(function(){
+      renderPrice();                 // keep using what we have (it covers today)
+      schedulePrices(10 * 60 * 1000);
+    });
+  }
+  function schedulePrices(ms){
+    clearTimeout(priceTimer);
+    priceTimer = setTimeout(loadPrices, ms);
+  }
+  function fmtCents(c){
+    var s = Math.abs(c) >= 10 ? Math.round(c).toString() : c.toFixed(1).replace('.', ',');
+    return s.replace('-', '\u2212');
+  }
+  function renderPrice(){
+    var now = Date.now(), el = document.getElementById('curPrice'), note = document.getElementById('cheapHour');
+    var slotLen = priceSlots.length > 1 ? priceSlots[1].t - priceSlots[0].t : 15 * 60 * 1000;
+    var cur = null;
+    for (var i = 0; i < priceSlots.length; i++){
+      if (priceSlots[i].t <= now && now < priceSlots[i].t + slotLen) { cur = priceSlots[i]; break; }
+    }
+    if (!cur) { el.innerHTML = '&ndash;'; el.className = 'stat__value num'; note.textContent = ''; return; }
+    el.innerHTML = fmtCents(cur.p) + '<span class="unit">snt</span>';
+    el.className = 'stat__value num' + (cur.p < PRICE_CHEAP ? ' price--cheap' : cur.p >= PRICE_VHIGH ? ' price--vhigh' : cur.p >= PRICE_HIGH ? ' price--high' : '');
+    // cheapest whole clock hour from this hour on, within the next 24 h
+    var byHour = {}, hours = [];
+    var hourNow = now - (now % (60 * 60 * 1000));
+    for (var j = 0; j < priceSlots.length; j++){
+      var s = priceSlots[j], hk = s.t - (s.t % (60 * 60 * 1000));
+      if (hk < hourNow || hk >= hourNow + 24 * 60 * 60 * 1000) continue;
+      if (!byHour[hk]) { byHour[hk] = []; hours.push(hk); }
+      byHour[hk].push(s.p);
+    }
+    var best = null, bestAvg = 0;
+    for (var k = 0; k < hours.length; k++){
+      var ps = byHour[hours[k]], sum = 0;
+      for (var q = 0; q < ps.length; q++) sum += ps[q];
+      var avg = sum / ps.length;
+      if (best === null || avg < bestAvg) { best = hours[k]; bestAvg = avg; }
+    }
+    if (best === null) { note.textContent = ''; return; }
+    var h1 = helsinkiHour(new Date(best)), h2 = (h1 + 1) % 24;
+    note.innerHTML = best === hourNow ? 'Halvin sähkö <b>nyt</b>' : 'Halvin <b>klo ' + h1 + '\u2013' + h2 + '</b>';
+    fitKani();
+  }
+  loadPrices();
+  setInterval(renderPrice, 60 * 1000);
 
   /* ---------- Trains from Kilo (Fintraffic Digitraffic: free, no key) ---------- */
   // Station KIL = Kilo. Trains towards Helsinki are listed first, then the
@@ -1439,25 +1651,33 @@
     return out;
   }
 
+  var SOON_MIN = 15;   // departures sooner than this show as minutes
+
   // One departure row, shared by the train and bus boards.
   function depRow(kind, d, tag, split, group){
     var schedStr = fmtTime(new Date(d.sched));
     var estStr = fmtTime(new Date(d.ms));
-    // cancelled: the row is struck through and dimmed (CSS), no estimate shown
-    var late = '<span class="dep__late">' + (!d.cancelled && estStr !== schedStr ? '~' + estStr : '') + '</span>';
+    // Leaving within 15 min: minutes from the live estimate, like HSL's stop
+    // displays ("4 min", "Nyt"). Later: timetable time, plus ~estimate if off.
+    // Cancelled: the timetable time, struck through and dimmed (CSS).
+    var mins = (d.ms - Date.now()) / 60000;
+    var soon = !d.cancelled && mins < SOON_MIN;
+    var timeHtml = !soon ? schedStr
+      : (mins < 1 ? 'Nyt' : Math.floor(mins) + '<span class="dep__min">min</span>');
+    var late = '<span class="dep__late">' + (!soon && !d.cancelled && estStr !== schedStr ? '~' + estStr : '') + '</span>';
     var line = String(d.line).replace(/[^A-Za-z0-9]/g, '');
     return '<div class="dep-row' + (d.cancelled ? ' is-cancelled' : '') + (split ? ' dep-row--split' : '') + '" data-g="' + (group || 0) + '">' +
       '<span class="dep__line dep__line--' + kind + (line.length > 3 ? ' dep__line--long' : '') + '">' + line + '</span>' +
       '<span class="dep__dest">' + String(d.dest).replace(/[<>&]/g, '') + '</span>' +
       '<span class="dep__when">' + (tag ? '<span class="dep__tag">' + tag + '</span>' : '') +
-      '<span class="dep__time">' + schedStr + '</span>' + late + '</span></div>';
+      '<span class="dep__time">' + timeHtml + '</span>' + late + '</span></div>';
   }
 
   function renderTrains(){
     var el = document.getElementById('trainList');
     var now = Date.now();
     if ((trainsOkAt && now - trainsOkAt > 10 * 60 * 1000) || (!trainsOkAt && trainsFailed)) {
-      el.innerHTML = '<div class="board__empty">Train times unavailable · retrying</div>';
+      el.innerHTML = '<div class="board__empty">Junatietoja ei saatu · yritetään uudelleen</div>';
       return;
     }
     var dirs = [[], []];                     // [towards Helsinki, westbound]
@@ -1466,7 +1686,7 @@
       if (d.ms > now - 30 * 1000) dirs[d.east ? 0 : 1].push(d);
     }
     if (!dirs[0].length && !dirs[1].length) {
-      el.innerHTML = '<div class="board__empty">' + (trainsOkAt ? 'No more trains tonight' : 'Loading trains…') + '</div>';
+      el.innerHTML = '<div class="board__empty">' + (trainsOkAt ? 'Ei enää junia tänään' : 'Ladataan junia…') + '</div>';
       return;
     }
     var html = '';
@@ -1479,7 +1699,7 @@
         var gapBefore = prev ? it.sched - prev.sched : it.ms - now;
         var isFirst = gapBefore > NIGHT_GAP_MS;
         var isLast = !isFirst && !!next && (next.sched - it.sched > NIGHT_GAP_MS);
-        html += depRow('train', it, isFirst ? 'First' : isLast ? 'Last' : '', g === 1 && k === 0 && html !== '', g);
+        html += depRow('train', it, isFirst ? 'Ens.' : isLast ? 'Viim.' : '', g === 1 && k === 0 && html !== '', g);
       }
     }
     el.innerHTML = html;
@@ -1521,14 +1741,12 @@
   var noticeTimer = null;
 
   function noticeText(msg){
-    var parts = [msg.video, msg.audio];
-    for (var i = 0; i < parts.length; i++){
-      var tx = parts[i] && parts[i].text;
-      if (tx && tx.en) return tx.en;
-    }
-    for (var j = 0; j < parts.length; j++){
-      var tf = parts[j] && parts[j].text;
-      if (tf && tf.fi) return tf.fi;
+    var parts = [msg.video, msg.audio], langs = ['fi', 'en'];
+    for (var l = 0; l < langs.length; l++){
+      for (var i = 0; i < parts.length; i++){
+        var tx = parts[i] && parts[i].text;
+        if (tx && tx[langs[l]]) return tx[langs[l]];
+      }
     }
     return '';
   }
@@ -1552,7 +1770,7 @@
       }
       var box = document.getElementById('trainNotice');
       if (!texts.length) { box.hidden = true; renderDepartures(); return; }
-      var more = texts.length > 1 ? '<span class="train-notice__more">(+' + (texts.length - 1) + ' more)</span>' : '';
+      var more = texts.length > 1 ? '<span class="train-notice__more">(+' + (texts.length - 1) + ' muuta)</span>' : '';
       document.getElementById('trainNoticeText').innerHTML =
         texts[0].replace(/[<>&]/g, '') + more;
       box.hidden = false;
@@ -1598,7 +1816,9 @@
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
-  var BUS_QUERY = '{ stops(name: "' + BUS_STOP_NAME + '") { code stoptimesWithoutPatterns(numberOfDepartures: 12) ' +
+  var BUS_QUERY = '{ stops(name: "' + BUS_STOP_NAME + '") { code ' +
+    'alerts(types: [STOP, ROUTES]) { alertHeaderText effectiveStartDate effectiveEndDate } ' +
+    'stoptimesWithoutPatterns(numberOfDepartures: 12) ' +
     '{ scheduledDeparture realtimeDeparture realtime realtimeState serviceDay headsign trip { route { shortName } } } } }';
 
   var busDepartures = [];     // [{ stop, line, dest, ms, sched, cancelled }]
@@ -1610,7 +1830,7 @@
     if (!HSL_API_KEY) { busError = 'nokey'; renderBuses(); return; }
     fetch(HSL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'digitransit-subscription-key': HSL_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'digitransit-subscription-key': HSL_API_KEY, 'Accept-Language': 'fi' },
       body: JSON.stringify({ query: BUS_QUERY })
     }).then(function(r){
       if (r.status === 401 || r.status === 403) throw new Error('key');
@@ -1619,11 +1839,19 @@
     }).then(function(json){
       var stops = json && json.data && json.data.stops;
       if (!stops) throw new Error('data');
-      var out = [], found = 0;
+      var out = [], found = 0, alerts = [], nowS = Date.now() / 1000;
       for (var i = 0; i < stops.length; i++){
         var stop = stops[i];
         if (!stop || BUS_STOP_CODES.indexOf(stop.code) < 0) continue;
         found++;
+        var al = stop.alerts || [];
+        for (var a = 0; a < al.length; a++){
+          var tx = String(al[a].alertHeaderText || '').replace(/\s+/g, ' ').trim();
+          if (!tx || alerts.indexOf(tx) >= 0) continue;
+          if (al[a].effectiveStartDate && al[a].effectiveStartDate > nowS) continue;
+          if (al[a].effectiveEndDate && al[a].effectiveEndDate < nowS) continue;
+          alerts.push(tx);
+        }
         var times = stop.stoptimesWithoutPatterns || [];
         for (var j = 0; j < times.length; j++){
           var st = times[j];
@@ -1645,6 +1873,7 @@
       if (!found) throw new Error('nostop');
       out.sort(function(a, b){ return a.ms - b.ms; });
       busDepartures = out;
+      showBusAlerts(alerts);
       busOkAt = Date.now();
       busError = '';
       renderBuses();
@@ -1656,6 +1885,18 @@
       scheduleBuses(60 * 1000);
     });
   }
+  // HSL notices for the stops and their lines (detours, works...), in Finnish
+  var busAlertText = '';
+  function showBusAlerts(list){
+    var txt = list.length ? list[0].replace(/[<>&]/g, '') +
+      (list.length > 1 ? '<span class="train-notice__more">(+' + (list.length - 1) + ' muuta)</span>' : '') : '';
+    if (txt === busAlertText) return;
+    busAlertText = txt;
+    document.getElementById('busNoticeText').innerHTML = txt;
+    document.getElementById('busNotice').hidden = !txt;
+    renderDepartures();      // the notice takes room from the departures
+  }
+
   // "Matinkylä (M) via Urheilupuisto (M)" -> "Matinkylä"
   function shortHeadsign(h){
     return h.replace(/\s+via\s+.*$/i, '').replace(/\s*\(M\)/g, '').trim();
@@ -1670,10 +1911,10 @@
     var el = document.getElementById('busList');
     var now = Date.now();
     var msg = '';
-    if (busError === 'nokey') msg = 'Add an HSL API key to show buses';
-    else if (busError === 'key') msg = 'HSL API key not accepted';
-    else if (busError === 'nostop') msg = 'Stops ' + BUS_STOP_CODES.join(' / ') + ' not found';
-    else if ((busOkAt && now - busOkAt > 10 * 60 * 1000) || (!busOkAt && busError)) msg = 'Bus times unavailable · retrying';
+    if (busError === 'nokey') msg = 'HSL-avain puuttuu';
+    else if (busError === 'key') msg = 'HSL-avain ei kelpaa';
+    else if (busError === 'nostop') msg = 'Pysäkkejä ' + BUS_STOP_CODES.join(' / ') + ' ei löytynyt';
+    else if ((busOkAt && now - busOkAt > 10 * 60 * 1000) || (!busOkAt && busError)) msg = 'Bussitietoja ei saatu · yritetään uudelleen';
     if (msg) { el.innerHTML = '<div class="board__empty">' + msg + '</div>'; return; }
     var html = '';
     var order = BUS_STOP_CODES;
@@ -1686,7 +1927,7 @@
         shown++;
       }
     }
-    el.innerHTML = html || '<div class="board__empty">' + (busOkAt ? 'No more buses tonight' : 'Loading buses…') + '</div>';
+    el.innerHTML = html || '<div class="board__empty">' + (busOkAt ? 'Ei enää busseja tänään' : 'Ladataan busseja…') + '</div>';
     fitBoard(el);
   }
 
@@ -1705,7 +1946,27 @@
     loadNotices();
     loadBuses();
     loadLightning();
+    loadPrices();
   });
+
+  // amber dot on the weather panel when the weather hasn't updated for 30 min
+  var pageStart = Date.now();
+  function checkStale(){
+    var now = Date.now();
+    var stale = lastWeatherOkAt ? now - lastWeatherOkAt > 30 * 60 * 1000 : now - pageStart > 3 * 60 * 1000;
+    document.getElementById('staleDot').hidden = !stale;
+  }
+  setInterval(checkStale, 60 * 1000);
+
+  // Burn-in guard for the AMOLED screen: nudge the whole layout by a couple of
+  // pixels every 3 minutes, walking round a small square. Not noticeable.
+  var SHIFTS = [[0,0],[2,0],[2,2],[0,2],[-2,2],[-2,0],[-2,-2],[0,-2],[2,-2]], shiftIdx = 0;
+  function pixelShift(){
+    shiftIdx = (shiftIdx + 1) % SHIFTS.length;
+    var dash = document.querySelector('.dash');
+    if (dash) dash.style.transform = 'translate(' + SHIFTS[shiftIdx][0] + 'px,' + SHIFTS[shiftIdx][1] + 'px)';
+  }
+  setInterval(pixelShift, 3 * 60 * 1000);
 
   /* keep the day/night tint updating smoothly between fetches */
   setInterval(function(){
@@ -1720,13 +1981,17 @@
      - tap the temperature or the bunny: the bunny says something
      - tap the clock 5 times in a row: carrot and bunny rain
      - tap the date 5 times in a row: a giant bunny bounces and trembles
+     - hold the bunny for a second: version number
+     - 06:30-09:30 and 14:30-17:30 the bunny gives a clothing tip by itself
+     - seasonal outfits (December, Independence Day, Vappu, Midsummer, Halloween)
+     - a snow pile along the weather panel after it has snowed
      - now and then (07-21) a bunny hops across the bottom of the screen
      - full-moon nights: the moon icon shows a full moon with a tiny bunny
      Settings (dates only, no names) are near the top of this script.          */
 
-  var KANI_SVG = '<svg class="kani-svg" viewBox="0 -14 74 80" aria-hidden="true"><ellipse cx="32" cy="63.2" rx="16" ry="2.4" fill="#000" opacity=".28"/><g class="k-acc k-acc-snow" fill="#fff"><circle cx="7" cy="8" r="1.5"/><circle cx="66" cy="22" r="1.3"/><circle cx="11" cy="30" r="1.1"/><circle cx="62" cy="40" r="1.6"/><circle cx="5" cy="47" r="1.2"/><circle cx="18" cy="-4" r="1.2"/><circle cx="54" cy="4" r="1"/></g><ellipse cx="25.5" cy="10" rx="4.6" ry="11.5" transform="rotate(-10 25.5 10)" fill="#E6ECF6"/><ellipse cx="25.5" cy="11" rx="2.2" ry="8.2" transform="rotate(-10 25.5 11)" fill="#F2A7B8"/><ellipse cx="38.5" cy="10" rx="4.6" ry="11.5" transform="rotate(10 38.5 10)" fill="#E6ECF6"/><ellipse cx="38.5" cy="11" rx="2.2" ry="8.2" transform="rotate(10 38.5 11)" fill="#F2A7B8"/><ellipse cx="32" cy="48" rx="14" ry="12.5" fill="#E6ECF6"/><ellipse cx="32" cy="50.5" rx="8.2" ry="8.4" fill="#F7F9FD"/><ellipse cx="24" cy="59.6" rx="5.6" ry="3" fill="#D3DCEA"/><ellipse cx="40" cy="59.6" rx="5.6" ry="3" fill="#D3DCEA"/><circle cx="32" cy="28" r="11.6" fill="#E6ECF6"/><circle cx="25.4" cy="31.4" r="2.3" fill="#F2A7B8" opacity=".55"/><circle cx="38.6" cy="31.4" r="2.3" fill="#F2A7B8" opacity=".55"/><g class="k-eyes-open"><circle cx="27.8" cy="27.2" r="1.9" fill="#1B2438"/><circle cx="36.2" cy="27.2" r="1.9" fill="#1B2438"/><circle cx="28.4" cy="26.5" r=".6" fill="#fff"/><circle cx="36.8" cy="26.5" r=".6" fill="#fff"/></g><g class="k-eyes-closed" fill="none" stroke="#1B2438" stroke-width="1.4" stroke-linecap="round"><path d="M26 27.6q1.8 1.5 3.6 0"/><path d="M34.4 27.6q1.8 1.5 3.6 0"/></g><path d="M30.6 30.7h2.8L32 32.3z" fill="#E58AA0"/><path d="M32 32.3v1.1M32 33.4q-1.3 1.1-2.4 0M32 33.4q1.3 1.1 2.4 0" fill="none" stroke="#8A6B7A" stroke-width=".9" stroke-linecap="round"/><ellipse cx="26.6" cy="42.4" rx="2.7" ry="2.1" fill="#D3DCEA"/><ellipse cx="37.4" cy="42.4" rx="2.7" ry="2.1" fill="#D3DCEA"/><g class="k-acc k-acc-scarf"><path d="M20.8 38.4Q32 43.2 43.2 38.4L43.2 42.2Q32 47 20.8 42.2Z" fill="#4FD1C5"/><path d="M36.5 42.6l2.6 9.2 3.6-1-2.2-8.9z" fill="#3AB3A8"/></g><g class="k-acc k-acc-hat"><path d="M20.8 23.4C21 11.8 43 11.8 43.2 23.4Z" fill="#E8646B"/><rect x="19.8" y="20.4" width="24.4" height="4" rx="2" fill="#F4F6FA"/><circle cx="32" cy="12.6" r="2.9" fill="#F4F6FA"/></g><g class="k-acc k-acc-party"><path d="M26.2 19.4L32 1.6l5.8 17.8z" fill="#F4A94A"/><path d="M28.6 12.2l6.2 2.2M30.4 6.8l3.6 1.3" stroke="#E8646B" stroke-width="1.6"/><circle cx="32" cy="1.6" r="2.2" fill="#E8646B"/></g><g class="k-acc k-acc-glasses" fill="#0B1220"><rect x="23.8" y="24.6" width="7.6" height="5" rx="2.1"/><rect x="32.6" y="24.6" width="7.6" height="5" rx="2.1"/><rect x="31" y="25.9" width="2" height="1"/><path d="M25 25.6l1.6-.2" stroke="#9FB0CC" stroke-width=".6"/></g><g class="k-acc k-acc-ringette"><path d="M45 41l15.5 18.5" stroke="#C9A06A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="63" cy="61.2" rx="5.2" ry="2.2" fill="none" stroke="#3B82F6" stroke-width="2.1"/></g><g class="k-acc k-acc-umbrella"><path d="M30 2.4Q50 -24 70 2.4Q65 -1.6 60 2.4Q55 -1.6 50 2.4Q45 -1.6 40 2.4Q35 -1.6 30 2.4Z" fill="#4FD1C5"/><path d="M50 -10.6V2.4" stroke="#3AB3A8" stroke-width="1"/><path d="M50 2.4V45.6q0 3.6-3.4 3.6" fill="none" stroke="#9FB0CC" stroke-width="1.7" stroke-linecap="round"/></g><g class="k-acc k-acc-sleep" fill="#93A6C8" font-family="Space Grotesk, Inter, sans-serif" font-weight="700"><text x="46" y="16" font-size="8.5">z</text><text x="53" y="7" font-size="6.5">z</text></g></svg>';
+  var KANI_SVG = '<svg class="kani-svg" viewBox="0 -14 74 80" aria-hidden="true"><ellipse cx="32" cy="63.2" rx="16" ry="2.4" fill="#000" opacity=".28"/><g class="k-acc k-acc-snow" fill="#fff"><circle cx="7" cy="8" r="1.5"/><circle cx="66" cy="22" r="1.3"/><circle cx="11" cy="30" r="1.1"/><circle cx="62" cy="40" r="1.6"/><circle cx="5" cy="47" r="1.2"/><circle cx="18" cy="-4" r="1.2"/><circle cx="54" cy="4" r="1"/></g><ellipse cx="25.5" cy="10" rx="4.6" ry="11.5" transform="rotate(-10 25.5 10)" fill="#E6ECF6"/><ellipse cx="25.5" cy="11" rx="2.2" ry="8.2" transform="rotate(-10 25.5 11)" fill="#F2A7B8"/><ellipse cx="38.5" cy="10" rx="4.6" ry="11.5" transform="rotate(10 38.5 10)" fill="#E6ECF6"/><ellipse cx="38.5" cy="11" rx="2.2" ry="8.2" transform="rotate(10 38.5 11)" fill="#F2A7B8"/><ellipse cx="32" cy="48" rx="14" ry="12.5" fill="#E6ECF6"/><ellipse cx="32" cy="50.5" rx="8.2" ry="8.4" fill="#F7F9FD"/><ellipse cx="24" cy="59.6" rx="5.6" ry="3" fill="#D3DCEA"/><ellipse cx="40" cy="59.6" rx="5.6" ry="3" fill="#D3DCEA"/><circle cx="32" cy="28" r="11.6" fill="#E6ECF6"/><circle cx="25.4" cy="31.4" r="2.3" fill="#F2A7B8" opacity=".55"/><circle cx="38.6" cy="31.4" r="2.3" fill="#F2A7B8" opacity=".55"/><g class="k-eyes-open"><circle cx="27.8" cy="27.2" r="1.9" fill="#1B2438"/><circle cx="36.2" cy="27.2" r="1.9" fill="#1B2438"/><circle cx="28.4" cy="26.5" r=".6" fill="#fff"/><circle cx="36.8" cy="26.5" r=".6" fill="#fff"/></g><g class="k-eyes-closed" fill="none" stroke="#1B2438" stroke-width="1.4" stroke-linecap="round"><path d="M26 27.6q1.8 1.5 3.6 0"/><path d="M34.4 27.6q1.8 1.5 3.6 0"/></g><path d="M30.6 30.7h2.8L32 32.3z" fill="#E58AA0"/><path d="M32 32.3v1.1M32 33.4q-1.3 1.1-2.4 0M32 33.4q1.3 1.1 2.4 0" fill="none" stroke="#8A6B7A" stroke-width=".9" stroke-linecap="round"/><ellipse cx="26.6" cy="42.4" rx="2.7" ry="2.1" fill="#D3DCEA"/><ellipse cx="37.4" cy="42.4" rx="2.7" ry="2.1" fill="#D3DCEA"/><g class="k-acc k-acc-scarf"><path d="M20.8 38.4Q32 43.2 43.2 38.4L43.2 42.2Q32 47 20.8 42.2Z" fill="#4FD1C5"/><path d="M36.5 42.6l2.6 9.2 3.6-1-2.2-8.9z" fill="#3AB3A8"/></g><g class="k-acc k-acc-hat"><path d="M20.8 23.4C21 11.8 43 11.8 43.2 23.4Z" fill="#E8646B"/><rect x="19.8" y="20.4" width="24.4" height="4" rx="2" fill="#F4F6FA"/><circle cx="32" cy="12.6" r="2.9" fill="#F4F6FA"/></g><g class="k-acc k-acc-party"><path d="M26.2 19.4L32 1.6l5.8 17.8z" fill="#F4A94A"/><path d="M28.6 12.2l6.2 2.2M30.4 6.8l3.6 1.3" stroke="#E8646B" stroke-width="1.6"/><circle cx="32" cy="1.6" r="2.2" fill="#E8646B"/></g><g class="k-acc k-acc-glasses" fill="#0B1220"><rect x="23.8" y="24.6" width="7.6" height="5" rx="2.1"/><rect x="32.6" y="24.6" width="7.6" height="5" rx="2.1"/><rect x="31" y="25.9" width="2" height="1"/><path d="M25 25.6l1.6-.2" stroke="#9FB0CC" stroke-width=".6"/></g><g class="k-acc k-acc-ringette"><path d="M45 41l15.5 18.5" stroke="#C9A06A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="63" cy="61.2" rx="5.2" ry="2.2" fill="none" stroke="#3B82F6" stroke-width="2.1"/></g><g class="k-acc k-acc-santa"><path d="M20.6 23.6C20.8 12.4 36.5 9.6 42 15.2C45.6 18.8 48.4 21.6 50.6 24.6L46.4 25.4C45.4 23.6 44.2 22.6 43.4 23.6Z" fill="#E8646B"/><rect x="19.6" y="20.6" width="24.8" height="4" rx="2" fill="#F4F6FA"/><circle cx="50.6" cy="25.2" r="2.7" fill="#F4F6FA"/></g><g class="k-acc k-acc-rosette"><circle cx="38.6" cy="48.4" r="4.3" fill="#1F4FA3"/><circle cx="38.6" cy="48.4" r="2.9" fill="#fff"/><circle cx="38.6" cy="48.4" r="1.5" fill="#1F4FA3"/></g><g class="k-acc k-acc-vappu"><path d="M26 42Q16 30 9.5 7.5M26 42Q19 26 18.5 1" fill="none" stroke="#9FB0CC" stroke-width=".8"/><ellipse cx="9" cy="0.5" rx="5.4" ry="6.6" fill="#E8646B"/><path d="M8.2 7l.8 1 .8-1z" fill="#E8646B"/><ellipse cx="18.6" cy="-5.6" rx="4.6" ry="5.6" fill="#4FD1C5"/><path d="M17.8 0l.8 1 .8-1z" fill="#4FD1C5"/><path d="M3 20q2-2 4 0t4 0M44 34q2-2 4 0t4 0M4 34q2 2 4 0" fill="none" stroke="#F4A94A" stroke-width="1" stroke-linecap="round"/></g><g class="k-acc k-acc-wreath"><path d="M21.6 21.4Q32 15.6 42.4 21.4" fill="none" stroke="#5FA35A" stroke-width="2.2" stroke-linecap="round"/><circle cx="22.6" cy="20.6" r="1.8" fill="#F7F9FD"/><circle cx="26.4" cy="18.6" r="1.8" fill="#F4C84A"/><circle cx="30.2" cy="17.6" r="1.8" fill="#E58AA0"/><circle cx="34" cy="17.6" r="1.8" fill="#F7F9FD"/><circle cx="37.7" cy="18.6" r="1.8" fill="#B892FF"/><circle cx="41.4" cy="20.6" r="1.8" fill="#F4C84A"/></g><g class="k-acc k-acc-pumpkin"><ellipse cx="9" cy="58.4" rx="7" ry="5.4" fill="#E9892F"/><ellipse cx="9" cy="58.4" rx="3.2" ry="5.4" fill="#F4A94A"/><path d="M9 53.4q.4-2.6 2.2-3.4" fill="none" stroke="#5FA35A" stroke-width="1.6" stroke-linecap="round"/><path d="M6 57.2l1.2-1.2 1.2 1.2zM9.6 57.2l1.2-1.2 1.2 1.2zM6.4 60.2q2.6 1.6 5.2 0" fill="#3A2410" stroke="#3A2410" stroke-width=".5"/></g><g class="k-acc k-acc-umbrella"><path d="M30 2.4Q50 -24 70 2.4Q65 -1.6 60 2.4Q55 -1.6 50 2.4Q45 -1.6 40 2.4Q35 -1.6 30 2.4Z" fill="#4FD1C5"/><path d="M50 -10.6V2.4" stroke="#3AB3A8" stroke-width="1"/><path d="M50 2.4V45.6q0 3.6-3.4 3.6" fill="none" stroke="#9FB0CC" stroke-width="1.7" stroke-linecap="round"/></g><g class="k-acc k-acc-sleep" fill="#93A6C8" font-family="Space Grotesk, Inter, sans-serif" font-weight="700"><text x="46" y="16" font-size="8.5">z</text><text x="53" y="7" font-size="6.5">z</text></g></svg>';
   var REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var kaniState = { temp: null, kind: '', code: null };
+  var kaniState = { temp: null, feels: null, kind: '', code: null };
 
   // Helsinki wall-clock parts for a moment: y, m (1-12), d, h, wd (0 = Sunday)
   function kaniNow(date){
@@ -1771,12 +2036,35 @@
     return age > 13.77 && age < 15.77;
   }
 
+  // Seasonal outfit for today, or ''
+  function kaniHoliday(p){
+    if (p.m === 12 && p.d === 6) return 'rosette';                           // itsenäisyyspäivä
+    if (p.m === 12 && p.d <= 26) return 'santa';                             // joulukuu
+    if ((p.m === 4 && p.d === 30) || (p.m === 5 && p.d === 1)) return 'vappu';
+    if (p.m === 6 && ((p.wd === 5 && p.d >= 19 && p.d <= 25) || (p.wd === 6 && p.d >= 20 && p.d <= 26))) return 'juhannus';
+    if (p.m === 10 && p.d >= 25) return 'halloween';
+    return '';
+  }
+
+  // Snow pile: remember when it last snowed (on this tablet)
+  var SNOW_KEY = 'kani-lumi';
+  function updateSnowPile(){
+    var s = kaniState, el = document.getElementById('snowPile'), last = 0;
+    try { last = parseInt(localStorage.getItem(SNOW_KEY), 10) || 0; } catch (e) {}
+    if (s.kind === 'snow') { last = Date.now(); try { localStorage.setItem(SNOW_KEY, String(last)); } catch (e) {} }
+    if (s.temp !== null && s.temp > 1) { last = 0; try { localStorage.removeItem(SNOW_KEY); } catch (e) {} }   // melted
+    var show = s.kind === 'snow' || (last && Date.now() - last < 48 * 3600 * 1000 && s.temp !== null && s.temp <= 0.5);
+    if (el) el.hidden = !show;
+  }
+
   // Called by the weather code whenever current conditions update.
-  function kaniSetWeather(temp, kind, code){
+  function kaniSetWeather(temp, kind, code, feels){
     kaniState.temp = (typeof temp === 'number') ? temp : null;
+    kaniState.feels = (typeof feels === 'number') ? feels : kaniState.temp;
     kaniState.kind = kind || '';
     kaniState.code = code;
     updateKani();
+    updateSnowPile();
   }
 
   // The bunny is drawn big, but a wide temperature (e.g. -23°) needs that room
@@ -1785,7 +2073,7 @@
   function fitKani(){
     var el = document.getElementById('kani');
     if (!el) return;
-    var vals = document.querySelectorAll('.current__grid .stat__value');
+    var vals = document.querySelectorAll('.current__grid .stat__value, .current__notes');
     function crowded(){
       for (var i = 0; i < vals.length; i++) if (vals[i].scrollWidth > vals[i].clientWidth + 1) return true;
       return false;
@@ -1798,7 +2086,9 @@
     }
   }
 
+  // 22:00-06:00: the bunny sleeps and the whole screen dims
   function isKaniNight(p){ return p.h >= 22 || p.h < 6; }
+  var NIGHT_DIM = 0.45;   // 0 = no dimming, 0.6 = quite dark
 
   function updateKani(){
     var p = kaniNow(), s = kaniState;
@@ -1811,13 +2101,72 @@
     if (!night && s.kind === 'clear-day' && s.temp !== null && s.temp >= 15) cls.push('is-sunny');
     if (isBirthday(p)) cls.push('is-party');
     if (!night && (isPracticeDay(p) || isGameDay(p))) cls.push('is-ringette');
+    var hol = kaniHoliday(p);
+    if (hol) cls.push('is-' + hol);
     var el = document.getElementById('kani');
     if (el) el.className = cls.join(' ');
+    var dim = document.getElementById('nightDim');
+    if (dim) {
+      dim.style.opacity = night ? NIGHT_DIM : 0;
+      // the first time (page just opened) jump straight there; afterwards fade over a minute
+      if (!dim.getAttribute('data-ready')) {
+        dim.style.transition = 'none';
+        dim.offsetWidth;                 // apply without animating
+        dim.style.transition = '';
+        dim.setAttribute('data-ready', '1');
+      }
+    }
 
     var dash = document.querySelector('.dash');
     if (dash && dash.classList.contains('is-easter') !== isEaster(p)) {
       if (isEaster(p)) dash.classList.add('is-easter'); else dash.classList.remove('is-easter');
       renderDepartures();   // the ears make the weather strips a little taller
+    }
+  }
+
+  /* ---- the bunny's clothing tip (what to wear right now) ---- */
+  function clothingTip(){
+    var s = kaniState, f = s.feels !== null ? s.feels : s.temp, t = s.temp;
+    if (f === null || f === undefined || t === null) return '';
+    var main = f <= -15 ? 'Tosi kylmä! Toppavaatteet, pipo, kaulahuivi ja paksut lapaset.'
+      : f <= -5 ? 'Toppatakki, pipo ja lapaset!'
+      : f <= 2 ? 'Talvitakki, pipo ja hanskat.'
+      : f <= 8 ? 'Välikausitakki ja pipo.'
+      : f <= 14 ? 'Välikausitakki tai paksu huppari.'
+      : f <= 20 ? 'Kevyt takki tai huppari riittää.'
+      : 'T-paitakeli! ☀️';
+    var wet = /^(rain|drizzle|thunder|sleet)$/;
+    var rainNow = wet.test(s.kind), rainSoon = false;
+    for (var i = 0; i < nextHours.length; i++){
+      if (wet.test(nextHours[i].kind) && nextHours[i].pop >= 60) rainSoon = true;
+    }
+    var extra = [];
+    if (s.kind === 'sleet' || ((rainNow || rainSoon) && t >= 0 && t <= 4)) extra.push('Kurahousut ja kumpparit!');
+    else if (rainNow) extra.push('Sateenvarjo mukaan! ☔');
+    else if (rainSoon) extra.push('Sade alkaa pian, sateenvarjo mukaan! ☔');
+    if (s.kind === 'snow' && t <= 0) extra.push('Talvikengät jalkaan!');
+    if (t >= -3 && t <= 2 && (rainNow || rainSoon || s.kind === 'snow' || s.kind === 'sleet')) extra.push('Varo liukkautta!');
+    if (lastSunrise && lastSunset) {
+      var now = Date.now();
+      if (now < lastSunrise.getTime() + 20 * 60000 || now > lastSunset.getTime() - 20 * 60000) extra.push('Muista heijastin!');
+    }
+    return 'Kanin vinkki: ' + main + (extra.length ? ' ' + extra.slice(0, 3).join(' ') : '');
+  }
+
+  // Leaving-home times: the bunny gives its tip by itself every few minutes
+  var TIP_TIMES = [[6.5, 9.5, 5], [14.5, 17.5, 10]];   // [from h, to h, every n min]
+  var lastAutoTip = 0;
+  function autoTip(){
+    var p = kaniNow(), parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Helsinki', minute: '2-digit' }).format(new Date());
+    var h = p.h + parseInt(parts, 10) / 60;
+    for (var i = 0; i < TIP_TIMES.length; i++){
+      var w = TIP_TIMES[i];
+      if (h >= w[0] && h < w[1] && Date.now() - lastAutoTip >= w[2] * 60000 - 5000){
+        if (document.querySelector('.kani-giant') || document.visibilityState === 'hidden') return;
+        var tip = clothingTip();
+        if (tip) { kaniShow(tip, 9000); lastAutoTip = Date.now(); }
+        return;
+      }
     }
   }
 
@@ -1934,6 +2283,8 @@
     if (s.kind === 'snow') special.push('Lunta! Kani rakentaa lumikanin. ⛄');
     if (s.kind === 'clear-day' && s.temp >= 15) special.push('Aurinkolasit päähän! 😎');
     if (isBirthday(p)) special.push('Onnea päivänsankarille! 🎉');
+    if (flagDay()) special.push('Tänään liputetaan: ' + flagDay() + '!');
+    if (!isKaniNight(p) && clothingTip()) special.push(clothingTip());
     if (isPracticeDay(p) || isGameDay(p)) special.push('Muista luistimet ja maila! ⛸️');
     // weather / night / birthday lines now and then; otherwise the 100 everyday lines
     if (special.length && Math.random() < 0.25) return special[Math.floor(Math.random() * special.length)];
@@ -1949,10 +2300,11 @@
     return KANI_LINES[lastLine];
   }
 
-  function kaniSay(){
+  function kaniSay(){ kaniShow(kaniLine()); }
+  function kaniShow(text, ms){
     var bunny = document.getElementById('kani'), bubble = document.getElementById('kaniBubble');
     if (!bunny || !bubble) return;
-    bubble.textContent = kaniLine();
+    bubble.textContent = text;
     bubble.className = 'kani-bubble';                 // measure while hidden
     var r = bunny.getBoundingClientRect();
     var left = Math.min(r.left + r.width * 0.55, window.innerWidth - bubble.offsetWidth - 8);
@@ -1961,7 +2313,7 @@
     bubble.style.top = top + 'px';
     bubble.className = 'kani-bubble show';
     clearTimeout(bubbleTimer);
-    bubbleTimer = setTimeout(function(){ bubble.className = 'kani-bubble'; }, 4500);
+    bubbleTimer = setTimeout(function(){ bubble.className = 'kani-bubble'; }, ms || 4500);
   }
 
   /* ---- tap the clock 5 times in a row: carrot and bunny rain ---- */
@@ -2035,7 +2387,22 @@
     // pointerup fires once per tap for mouse, finger and pen alike; "click" can
     // be swallowed when a browser treats quick taps as a double-tap zoom.
     if (temp) temp.addEventListener('pointerup', kaniSay);
-    if (holder) holder.addEventListener('pointerup', kaniSay);
+    // tap the bunny: it says something; hold it for a second: version number
+    var pressTimer = null, pressed = false;
+    if (holder) {
+      holder.addEventListener('pointerdown', function(){
+        pressed = false;
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(function(){ pressed = true; kaniShow('Kilon kotinäyttö · versio ' + VERSION, 6000); }, 800);
+      });
+      holder.addEventListener('pointerup', function(){
+        clearTimeout(pressTimer);
+        if (pressed) { pressed = false; return; }
+        kaniSay();
+      });
+      holder.addEventListener('pointercancel', function(){ clearTimeout(pressTimer); });
+      holder.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    }
     var clock = document.getElementById('clockTime');
     if (clock) clock.addEventListener('pointerup', function(){
       var now = Date.now();
@@ -2055,6 +2422,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitKani);
     window.addEventListener('resize', fitKani);
     setInterval(updateKani, 60 * 1000);
+    setInterval(autoTip, 60 * 1000);
     scheduleHop();
   })();
 
