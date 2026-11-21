@@ -405,25 +405,25 @@
     font-size: calc(var(--u) * 1.7);
     font-weight: 600;
     color: var(--muted);
-    margin-bottom: calc(var(--u) * 0.5);
+    margin-bottom: calc(var(--u) * 0.3);
   }
   .board__icon { font-size: calc(var(--u) * 2.2); color: var(--muted); }
   .board__icon .wi { stroke: currentColor; }
   .board__rows {
     display: flex;
     flex-direction: column;
-    min-height: calc(var(--u) * 3.4 * 4 + var(--u) * 0.6);
+    min-height: calc(var(--u) * 3.1 * 5 + var(--u) * 0.5);
   }
   .dep-row {
     display: flex;
     align-items: center;
     gap: calc(var(--u) * 0.9);
-    height: calc(var(--u) * 3.4);
+    height: calc(var(--u) * 3.1);
     white-space: nowrap;
   }
   .dep-row--split {
     border-top: 1px solid var(--panel-edge);
-    margin-top: calc(var(--u) * 0.6);
+    margin-top: calc(var(--u) * 0.5);
   }
   .dep__line {
     flex: 0 0 auto;
@@ -1610,7 +1610,7 @@
   // westbound ones (E to Kauklahti, U to Kirkkonummi...), each with its destination.
   var TRAIN_STATION = 'KIL';
   var TRAINS_REQUESTED = 20;
-  var ROWS_PER_DIRECTION = 2;
+  var TRAIN_ROWS = [3, 2];   // rows shown: [towards Helsinki, westbound]
   var NIGHT_GAP_MS = 90 * 60 * 1000;   // a gap this long means "last train" / "first train"
   var TRAIN_URL = 'https://rata.digitraffic.fi/api/v1/live-trains/station/' + TRAIN_STATION +
     '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=' + TRAINS_REQUESTED + '&include_nonstopping=false';
@@ -1706,7 +1706,7 @@
     var html = '';
     for (var g = 0; g < 2; g++){
       var items = dirs[g];
-      for (var k = 0; k < items.length && k < ROWS_PER_DIRECTION; k++){
+      for (var k = 0; k < items.length && k < TRAIN_ROWS[g]; k++){
         var it = items[k], prev = items[k - 1], next = items[k + 1];
         // "First": a long gap before it; "Last": the next train this way is only
         // after a long gap (labelled only when that next train is in the data).
@@ -1798,7 +1798,7 @@
   var HSL_API_KEY = '22b0d988bc2c4b8b88f0b25c8f7e8828';
   var BUS_STOP_CODES = ['E1827', 'E1826'];   // E1827 towards Leppävaara, E1826 towards Matinkylä (shown in this order)
   var BUS_STOP_NAME = 'Trillakatu';
-  var BUS_ROWS_PER_STOP = 2;
+  var BUS_ROWS = [3, 2];     // rows shown per stop, same order as BUS_STOP_CODES
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
@@ -1882,7 +1882,7 @@
     var html = '';
     for (var s = 0; s < BUS_STOP_CODES.length; s++){
       var shown = 0;
-      for (var i = 0; i < busDepartures.length && shown < BUS_ROWS_PER_STOP; i++){
+      for (var i = 0; i < busDepartures.length && shown < BUS_ROWS[s]; i++){
         var d = busDepartures[i];
         if (d.stop !== BUS_STOP_CODES[s] || d.ms <= now - 30 * 1000) continue;
         html += depRow('bus', d, '', shown === 0 && html !== '');   // divider between directions
