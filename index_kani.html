@@ -10,7 +10,6 @@
 <title>Kilo Weather Dashboard</title>
 <link rel="icon" href="data:,"><!-- no favicon; stops the 404 in the console -->
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -52,6 +51,7 @@
   }
 
   .dash {
+    --row-h: calc(var(--u) * 4.2);   /* one departure row */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -136,8 +136,6 @@
     margin-left: 0.12em;
   }
 
-  /* RADAR takes whatever height is left */
-  .radar-panel { flex: 1 1 auto; min-height: calc(var(--u) * 16); }
   .panel {
     background: var(--panel);
     border: 1px solid var(--panel-edge);
@@ -147,84 +145,31 @@
     min-height: 0;
   }
 
-  .radar-panel #map {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: #0d1626;
-  }
-  .base-tiles { filter: brightness(1.25) contrast(0.92) saturate(1.1); }
-  .radar-frame { transition: opacity 0.35s ease; }
-  .label-tiles { filter: brightness(1.35) contrast(1.05); }
-  .map-vignette {
-    position: absolute;
-    inset: 0;
-    z-index: 510;
-    pointer-events: none;
-    box-shadow: inset 0 0 70px rgba(7, 12, 24, 0.55);
-  }
-
-  /* pills over the map: radar time (top) and lightning count (bottom) */
-  .map-pill {
-    position: absolute;
-    left: calc(var(--u) * 1.2);
-    z-index: 520;
-    display: flex;
-    align-items: center;
-    gap: 0.4em;
-    background: rgba(11,18,32,0.62);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    backdrop-filter: blur(10px) saturate(140%);
-    border: 1px solid var(--panel-edge);
-    border-radius: calc(var(--u) * 0.9);
-    padding: calc(var(--u) * 0.45) calc(var(--u) * 1);
-    font-size: calc(var(--u) * 1.6);
-    color: var(--muted);
-    pointer-events: none;
-  }
-  .radar-time { top: calc(var(--u) * 1.2); }
-  .radar-time b { color: var(--teal); font-weight: 600; margin-right: 0.3em; }
-  /* bottom of the map: lightning pill, with the train notice under it when active */
-  .map-bottom {
-    position: absolute;
-    left: calc(var(--u) * 1.2);
-    right: calc(var(--u) * 1.2);
-    bottom: calc(var(--u) * 1.2);
-    z-index: 520;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: calc(var(--u) * 0.8);
-    pointer-events: none;
-  }
-  .map-bottom .map-pill { position: static; }
-  .map-notice {
-    align-self: stretch;
+  /* TRAIN NOTICE (track works etc.): its own row above the departures, only when active */
+  .train-notice {
+    flex: 0 0 auto;
     display: flex;
     align-items: flex-start;
     gap: calc(var(--u) * 1);
-    background: rgba(11,18,32,0.82);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    backdrop-filter: blur(10px) saturate(140%);
+    background: var(--panel);
     border: 1px solid rgba(244,169,74,0.45);
     border-left: 3px solid var(--amber);
-    border-radius: calc(var(--u) * 0.9);
-    padding: calc(var(--u) * 0.8) calc(var(--u) * 1.2);
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 0.8) calc(var(--u) * 1.4);
   }
-  .map-notice[hidden] { display: none; }
-  .map-notice__icon { font-size: calc(var(--u) * 2.2); color: var(--amber); flex: 0 0 auto; margin-top: 0.1em; }
-  .map-notice__icon .wi { stroke: currentColor; }
-  .map-notice__text {
-    font-size: calc(var(--u) * 1.65);
+  .train-notice[hidden] { display: none; }
+  .train-notice__icon { font-size: calc(var(--u) * 2.4); color: var(--amber); flex: 0 0 auto; margin-top: 0.05em; }
+  .train-notice__icon .wi { stroke: currentColor; }
+  .train-notice__text {
+    font-size: calc(var(--u) * 1.8);
     line-height: 1.3;
     color: var(--text);
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .map-notice__more { color: var(--muted); margin-left: 0.4em; }
-  #lightningCount { display: flex; align-items: center; gap: 0.4em; }
-  #lightningCount .wi { width: 1em; height: 1em; }
+  .train-notice__more { color: var(--muted); margin-left: 0.4em; }
 
   /* CURRENT CONDITIONS */
   .current-panel {
@@ -311,6 +256,7 @@
 
   /* HOURLY / WEEKLY STRIPS */
   .strip {
+    flex: 0 0 auto;              /* fixed size: only the departures area flexes */
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: var(--radius);
@@ -384,7 +330,8 @@
 
   /* DEPARTURES: trains from Kilo (left) and buses from Trillakatu (right) */
   .departures {
-    flex: 0 0 auto;
+    flex: 1 1 0;                 /* exactly the space that's left, whatever the rows */
+    min-height: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-gap: var(--gap);
@@ -393,51 +340,56 @@
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: var(--radius);
-    padding: calc(var(--u) * 0.9) calc(var(--u) * 1.5) calc(var(--u) * 0.9);
+    padding: calc(var(--u) * 1.1) calc(var(--u) * 1.0) calc(var(--u) * 0.8);
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;
   }
   .board__title {
     display: flex;
     align-items: center;
     gap: calc(var(--u) * 0.7);
-    font-size: calc(var(--u) * 1.7);
+    font-size: calc(var(--u) * 2.0);
     font-weight: 600;
     color: var(--muted);
-    margin-bottom: calc(var(--u) * 0.3);
+    margin-bottom: calc(var(--u) * 0.5);
   }
-  .board__icon { font-size: calc(var(--u) * 2.2); color: var(--muted); }
+  .board__icon { font-size: calc(var(--u) * 2.5); color: var(--muted); }
   .board__icon .wi { stroke: currentColor; }
+  /* rows fill the board; any row that wouldn't fit is dropped (see fitBoard) */
   .board__rows {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: calc(var(--u) * 3.1 * 5 + var(--u) * 0.5);
   }
   .dep-row {
     display: flex;
     align-items: center;
-    gap: calc(var(--u) * 0.9);
-    height: calc(var(--u) * 3.1);
+    flex: 0 0 auto;
+    gap: calc(var(--u) * 0.65);
+    height: var(--row-h);
     white-space: nowrap;
   }
   .dep-row--split {
     border-top: 1px solid var(--panel-edge);
-    margin-top: calc(var(--u) * 0.5);
+    margin-top: calc(var(--u) * 0.6);
   }
   .dep__line {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: calc(var(--u) * 2.8);
-    height: calc(var(--u) * 2.8);
-    padding: 0 calc(var(--u) * 0.45);
-    border-radius: calc(var(--u) * 0.6);
+    min-width: calc(var(--u) * 3.4);
+    height: calc(var(--u) * 3.4);
+    padding: 0 calc(var(--u) * 0.4);
+    border-radius: calc(var(--u) * 0.7);
     color: #fff;
     font-family: var(--num);
     font-weight: 700;
-    font-size: calc(var(--u) * 1.6);
+    font-size: calc(var(--u) * 1.9);
   }
   .dep__line--train { background: #8C4799; }   /* HSL commuter-train purple */
   .dep__line--bus { background: #007AC9; }     /* HSL bus blue */
@@ -446,45 +398,49 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: calc(var(--u) * 1.95);
+    font-size: calc(var(--u) * 2.2);
     color: var(--text);
   }
   .dep__when {
     flex: 0 0 auto;
     display: flex;
     align-items: baseline;
-    gap: calc(var(--u) * 0.5);
+    gap: calc(var(--u) * 0.45);
   }
-  .dep__tag { font-size: calc(var(--u) * 1.35); font-weight: 500; color: var(--muted); }
+  .dep__tag { font-size: calc(var(--u) * 1.6); font-weight: 500; color: var(--muted); }
   .dep__time {
     font-family: var(--num);
     font-variant-numeric: tabular-nums;
-    font-size: calc(var(--u) * 2.45);
+    font-size: calc(var(--u) * 2.8);
     font-weight: 600;
     color: var(--text);
   }
-  /* live-estimate column is always reserved, so the times line up */
+  /* live-estimate column: only takes room on a board that has an estimate
+     right now, and then on every row of that board so the times line up */
+  .dep__late:empty { display: none; }
+  .has-late .dep__late { display: inline; min-width: calc(var(--u) * 6.6); }
   .dep__late {
-    min-width: calc(var(--u) * 6.4);
     font-family: var(--num);
     font-variant-numeric: tabular-nums;
-    font-size: calc(var(--u) * 1.95);
+    font-size: calc(var(--u) * 1.9);
     font-weight: 600;
     color: var(--amber);
   }
-  .dep__late.is-cancel { font-family: inherit; font-size: calc(var(--u) * 1.6); color: var(--red); }
+  .dep__late.is-cancel { font-family: inherit; font-size: calc(var(--u) * 1.8); color: var(--red); }
   .dep-row.is-cancelled .dep__time { text-decoration: line-through; color: var(--muted-dim); }
   .dep-row.is-cancelled .dep__dest { color: var(--muted-dim); }
-  .board__empty { font-size: calc(var(--u) * 1.7); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
+  .board__empty { font-size: calc(var(--u) * 2.0); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
 
   .dash__footer {
     flex: 0 0 auto;
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: calc(var(--u) * 1.5);
     padding: 0 calc(var(--u) * 0.6);
     color: var(--muted-dim);
     font-size: calc(var(--u) * 1.2);
   }
+  .footer__meta { margin-left: auto; text-align: right; line-height: 1.35; white-space: nowrap; }
 
   /* LIGHTNING ALERT (only shown when a strike is within 20 km) */
   .lightning-alert {
@@ -530,16 +486,22 @@
   #curTemp, #kani, #clockTime { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   html, body { touch-action: manipulation; }   /* no double-tap zoom, so quick taps all count */
 
-  /* greeting pill, top-right of the radar map */
-  .map-pill.kani-greet {
-    left: auto;
-    right: calc(var(--u) * 1.2);
-    top: calc(var(--u) * 1.2);
-    color: var(--text);
-    font-family: 'Inter', -apple-system, sans-serif;
+  /* greeting pill, bottom-left in the footer */
+  .kani-greet {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: calc(var(--u) * 1.4);
+    padding: calc(var(--u) * 0.45) calc(var(--u) * 1.2);
+    font-size: calc(var(--u) * 1.75);
     font-weight: 600;
+    color: var(--text);
   }
-  .map-pill.kani-greet[hidden] { display: none; }
+  .kani-greet[hidden] { display: none; }
 
   /* speech bubble */
   .kani-bubble {
@@ -622,7 +584,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .lightning-alert { animation: none; }
-    .tint-layer, .radar-frame { transition: none; }
+    .tint-layer { transition: none; }
   }
 </style>
 </head>
@@ -665,24 +627,13 @@
     </div>
   </section>
 
-  <section class="panel radar-panel">
-    <div id="map"></div>
-    <div class="map-vignette"></div>
-    <div class="map-pill radar-time num tnum" id="radarTime">Loading radar&hellip;</div>
-    <div class="map-pill kani-greet" id="kaniGreet" hidden></div>
-    <div class="map-bottom">
-      <div class="map-pill radar-legend num">
-        <div id="lightningCount">&#9889; &mdash;</div>
-      </div>
-      <div class="map-notice" id="trainNotice" hidden>
-        <span class="map-notice__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8.5 17.5 6.5 21.5M15.5 17.5l2 4M7.6 19.5h8.8"/></svg></span>
-        <span class="map-notice__text" id="trainNoticeText"></span>
-      </div>
-    </div>
-  </section>
-
   <section class="strip hourly" id="hourlyStrip" aria-label="Next hours"></section>
   <section class="strip daily" id="dailyStrip" aria-label="Next 7 days"></section>
+
+  <div class="train-notice" id="trainNotice" hidden>
+    <span class="train-notice__icon"><svg class="wi" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8.5 17.5 6.5 21.5M15.5 17.5l2 4M7.6 19.5h8.8"/></svg></span>
+    <span class="train-notice__text" id="trainNoticeText"></span>
+  </div>
 
   <section class="departures">
     <div class="board" aria-label="Trains from Kilo">
@@ -698,13 +649,15 @@
   <div class="kani-bubble" id="kaniBubble" aria-live="polite"></div>
 
   <footer class="dash__footer">
-    <span id="updatedAt">Starting up&hellip;</span>
-    <span>Data: FMI, Open-Meteo, Fintraffic / digitraffic.fi, HSL. Map: Esri</span>
+    <div class="kani-greet" id="kaniGreet" hidden></div>
+    <div class="footer__meta">
+      <div id="updatedAt">Starting up&hellip;</div>
+      <div>Data: FMI, Open-Meteo, Fintraffic / digitraffic.fi, HSL</div>
+    </div>
   </footer>
 
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 (function(){
 
@@ -724,7 +677,6 @@
   var WI_CLOUD = 'M18 10h-1.26A8 8 0 1 0 9 20h9a4 4 0 0 0 0-8z';
   var WI_CLOUD_HI = 'M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25';
   var WI_BOLT_CLOUD = 'M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9';
-  var ZAP_MINI = '<svg class="wi" viewBox="-1 -1 26 26"><polygon class="wi-bolt" points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
 
   function svgIcon(kind){
     var s = '<svg class="wi" viewBox="-1 -1 26 26" aria-hidden="true">';
@@ -879,208 +831,12 @@
   tickClock();
   setInterval(tickClock, 1000);
 
-  /* ---------- Map ---------- */
-  // NOTE: the radar layer below uses FMI's WMS "View Service" for EVALUATION
-  // purposes, per FMI's own open-data terms (their WMS is licensed for
-  // evaluation/preview, not for embedding in a continuously-polling
-  // production app). Fine for a single personal device; if this becomes a
-  // permanent 24/7 install, consider reverting to RainViewer.
-  var map = L.map('map', {
-    zoomControl: false,
-    attributionControl: false,  // credits are shown in the footer instead
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    touchZoom: false,
-    boxZoom: false,
-    dragging: false,
-    keyboard: false,
-    minZoom: 6,
-    maxZoom: 12
-  }).setView([LAT, LON], 9);
-
-
-  // place names on their own pane, above the radar echoes
-  map.createPane('labels');
-  map.getPane('labels').style.zIndex = 450;
-  map.getPane('labels').style.pointerEvents = 'none';
-
-  // Esri Dark Gray Canvas basemap (no API key needed)
-  var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  L.tileLayer(ESRI + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 16,
-    className: 'base-tiles',
-    attribution: 'Tiles &copy; Esri'
-  }).addTo(map);
-  L.tileLayer(ESRI + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 16,
-    pane: 'labels',
-    className: 'label-tiles'
-  }).addTo(map);
-
-  L.circleMarker([LAT, LON], {
-    radius: 6,
-    color: '#F4A94A',
-    weight: 2,
-    fillColor: '#F4A94A',
-    fillOpacity: 0.85
-  }).addTo(map).bindTooltip('Kilo');
-
-  // Leaflet computes its center from the container size at init time. If the
-  // CSS grid/fonts haven't finished settling yet, that size can be briefly
-  // wrong, leaving the map looking off-center (e.g. the marker sitting near
-  // an edge instead of the middle). Force a recheck + re-center once things
-  // have actually settled, and again on any resize/orientation change.
-  function recenterMap(){
-    map.invalidateSize();
-    map.setView([LAT, LON], map.getZoom());
-  }
-  setTimeout(recenterMap, 300);
-  setTimeout(recenterMap, 1200);
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(recenterMap);
-  }
-  window.addEventListener('resize', recenterMap);
-  window.addEventListener('orientationchange', function(){ setTimeout(recenterMap, 300); });
-
-  var FMI_WMS_URL = 'https://openwms.fmi.fi/geoserver/wms';
-  var FMI_LAYER = 'Radar:suomi_dbz_eureffin';
-  var RADAR_OPACITY = 0.75;
-
-  // One Leaflet layer per radar frame. Each frame's tiles are downloaded ONCE;
-  // the animation just shows/hides already-loaded layers. (The previous
-  // version re-pointed two layers at a new time every 0.7 s, which re-fetched
-  // ~a dozen tiles per step, all day long.)
-  var radarFrames = [];   // [{ time: Date, layer: L.TileLayer.WMS, ready: bool }]
-  var radarIndex = -1;    // index of the frame currently on screen
-  var shownFrame = null;
-  var holdTicks = 0;      // extra ticks to linger on the newest frame
-
-  // FMI rate-limits its WMS (HTTP 429, roughly 600 requests / 5 min). 512 px
-  // tiles mean ~4x fewer requests than Leaflet's default 256 px. A frame with
-  // any failed tile is never shown (it would appear as an empty map) and is
-  // re-requested only at the next 5-minute refresh, so a 429 never turns
-  // into a retry loop.
-  function makeRadarFrame(t){
-    var f = { time: t, ready: false, failed: false, done: false, layer: null };
-    f.layer = L.tileLayer.wms(FMI_WMS_URL, {
-      layers: FMI_LAYER,
-      format: 'image/png',
-      transparent: true,
-      version: '1.1.1',
-      time: isoNoMillis(t),
-      tileSize: 512,
-      opacity: 0,
-      className: 'radar-frame',
-      attribution: 'Radar: FMI'
-    });
-    f.layer.on('tileerror', function(){ f.failed = true; });
-    f.layer.on('load', function(){ f.done = true; f.ready = !f.failed; });
-    f.layer.addTo(map);
-    return f;
-  }
-
-  // FMI's composite radar updates every 5 minutes. The newest frame time is
-  // read from FMI's own layer description, so we never ask for a frame that
-  // isn't published yet (that answer is an XML error the browser blocks as
-  // "CORB"). If that lookup fails, fall back to the clock.
-  var RADAR_CAPS_URL = 'https://openwms.fmi.fi/geoserver/Radar/suomi_dbz_eureffin/wms?service=WMS&version=1.3.0&request=GetCapabilities';
-
-  function latestRadarTime(){
-    return fetch(RADAR_CAPS_URL).then(function(r){
-      if (!r.ok) throw new Error('caps HTTP ' + r.status);
-      return r.text();
-    }).then(function(xml){
-      // e.g. <Dimension name="time" ...>2026-11-14T15:15:00Z/2026-11-21T15:05:00Z/PT5M</Dimension>
-      var m = xml.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)<\/Dimension>/);
-      if (!m) throw new Error('no time dimension');
-      var lastPart = m[1].trim().split(',').pop().split('/');
-      var end = Date.parse(lastPart.length >= 2 ? lastPart[1] : lastPart[0]);
-      if (isNaN(end)) throw new Error('bad time');
-      return Math.min(end, Date.now());
-    });
-  }
-
-  function buildFrameTimes(newestMs){
-    var now = new Date();
-    var flooredMs = now.getTime() - (now.getTime() % (5 * 60 * 1000));
-    if (typeof newestMs === 'number') flooredMs = newestMs - (newestMs % (5 * 60 * 1000));
-    var offsets = [25, 20, 15, 10, 5, 0]; // minutes ago
-    var frames = [];
-    for (var i = 0; i < offsets.length; i++){
-      var t = new Date(flooredMs - offsets[i] * 60 * 1000);
-      frames.push(t);
-    }
-    return frames;
-  }
-
+  /* ---------- FMI WFS helpers ---------- */
   function isoNoMillis(d){
     return d.toISOString().replace(/\.\d+Z$/, 'Z');
   }
 
-  function showRadarFrame(idx){
-    var f = radarFrames[idx];
-    if (shownFrame && shownFrame !== f) shownFrame.layer.setOpacity(0);
-    f.layer.setOpacity(RADAR_OPACITY);   // CSS transition on .radar-frame = crossfade
-    shownFrame = f;
-    radarIndex = idx;
-    var isLatest = idx === radarFrames.length - 1;
-    document.getElementById('radarTime').innerHTML =
-      (isLatest ? '<b>Now</b>' : '') + fmtTime(f.time);
-  }
-
-  // Step to the next frame whose tiles have finished loading.
-  function advanceRadar(){
-    if (radarFrames.length === 0) return;
-    if (holdTicks > 0) { holdTicks--; return; }
-    for (var step = 1; step <= radarFrames.length; step++){
-      var idx = (radarIndex + step) % radarFrames.length;
-      if (radarFrames[idx].ready){
-        showRadarFrame(idx);
-        if (idx === radarFrames.length - 1) holdTicks = 3; // linger ~2.8 s on "Now"
-        return;
-      }
-    }
-    // Nothing usable to show. Once every frame has finished trying, say so.
-    if (!shownFrame){
-      var allDone = true;
-      for (var i = 0; i < radarFrames.length; i++) if (!radarFrames[i].done) allDone = false;
-      if (allDone) document.getElementById('radarTime').textContent = 'Radar unavailable · retrying';
-    }
-  }
-
-  // Rebuild the frame window, reusing layers for times we already have, so
-  // each 5-minute refresh downloads only the one new frame.
-  function loadRadar(){
-    latestRadarTime().then(applyRadarFrames, function(){ applyRadarFrames(); });
-  }
-
-  function applyRadarFrames(newestMs){
-    var times = buildFrameTimes(newestMs);
-    var old = {};
-    for (var i = 0; i < radarFrames.length; i++) old[radarFrames[i].time.getTime()] = radarFrames[i];
-    var next = [];
-    for (var j = 0; j < times.length; j++){
-      var key = times[j].getTime();
-      // reuse good frames; frames that failed are dropped below and re-requested
-      if (old[key] && !old[key].failed) { next.push(old[key]); delete old[key]; }
-      else next.push(makeRadarFrame(times[j]));
-    }
-    for (var k in old){
-      if (!old.hasOwnProperty(k)) continue;
-      if (old[k] === shownFrame) shownFrame = null;
-      map.removeLayer(old[k].layer);
-    }
-    radarFrames = next;
-    radarIndex = shownFrame ? radarFrames.indexOf(shownFrame) : -1;
-  }
-
-  loadRadar();
-  setInterval(loadRadar, 5 * 60 * 1000);       // slide the frame window every 5 min
-  setInterval(advanceRadar, 700);              // step the animation
-
-  /* ---------- FMI WFS helpers ---------- */
-  // Note: unlike the WMS radar imagery above, FMI's WFS "Download Service"
-  // (used below for lightning, live observations and forecast) is explicitly
+  // FMI's WFS "Download Service" (lightning, observations, forecast) is
   // intended for continuous use by applications, per FMI's open data terms.
   var FMI_WFS_URL = 'https://opendata.fmi.fi/wfs';
 
@@ -1142,13 +898,11 @@
   }
 
   /* ---------- Lightning ---------- */
-  var lightningLayer = L.layerGroup().addTo(map);
-
   function loadLightning(){
     var end = new Date();
     var start = new Date(end.getTime() - 60 * 60 * 1000);
     var url = buildFmiUrl('fmi::observations::lightning::simple', {
-      bbox: '18,58,32,66',
+      bbox: '24.3,59.98,25.3,60.45',   // ~25 km around Kilo; the alert uses 20 km
       starttime: isoNoMillis(start),
       endtime: isoNoMillis(end)
     });
@@ -1165,9 +919,7 @@
       var strikes = [];
       for (var k in groups){ if (groups.hasOwnProperty(k)) strikes.push(groups[k]); }
       renderLightning(strikes);
-    }).catch(function(){
-      document.getElementById('lightningCount').innerHTML = ZAP_MINI + '<span>unavailable</span>';
-    });
+    }).catch(function(){ /* keep the alert as it is; try again next round */ });
   }
 
   // Distance in km between two lat/lon points (haversine formula)
@@ -1210,33 +962,8 @@
   }
 
   function renderLightning(strikes){
-    lightningLayer.clearLayers();
-    var now = Date.now();
-    var shown = 0;
-    for (var i = 0; i < strikes.length; i++){
-      var s = strikes[i];
-      var ageMin = (now - new Date(s.time).getTime()) / 60000;
-      if (ageMin < 0 || ageMin > 60) continue;
-      shown++;
-      var fade = Math.max(0.15, 1 - ageMin / 60);
-      var isCloud = s.params.cloud_indicator === 1;
-      var color = isCloud ? '#B892FF' : '#FFE066';
-      var peak = s.params.peak_current;
-      var radius = 5;
-      if (typeof peak === 'number' && !isNaN(peak)) {
-        radius = Math.min(11, 4 + Math.abs(peak) / 15);
-      }
-      L.circleMarker([s.lat, s.lon], {
-        radius: radius,
-        color: color,
-        weight: 1,
-        fillColor: color,
-        fillOpacity: fade,
-        opacity: fade
-      }).addTo(lightningLayer);
-    }
-    document.getElementById('lightningCount').innerHTML = ZAP_MINI + '<span>' + shown + ' / 60 min</span>';
     updateLightningAlert(strikes);
+    fitBoards();          // the alert banner takes room from the departures
   }
 
   loadLightning();
@@ -1610,7 +1337,7 @@
   // westbound ones (E to Kauklahti, U to Kirkkonummi...), each with its destination.
   var TRAIN_STATION = 'KIL';
   var TRAINS_REQUESTED = 20;
-  var TRAIN_ROWS = [3, 2];   // rows shown: [towards Helsinki, westbound]
+  var TRAIN_ROWS = [4, 4];   // most rows: [towards Helsinki, westbound]; fewer if they don't fit
   var NIGHT_GAP_MS = 90 * 60 * 1000;   // a gap this long means "last train" / "first train"
   var TRAIN_URL = 'https://rata.digitraffic.fi/api/v1/live-trains/station/' + TRAIN_STATION +
     '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=' + TRAINS_REQUESTED + '&include_nonstopping=false';
@@ -1675,12 +1402,12 @@
   }
 
   // One departure row, shared by the train and bus boards.
-  function depRow(kind, d, tag, split){
+  function depRow(kind, d, tag, split, group){
     var schedStr = fmtTime(new Date(d.sched));
     var estStr = fmtTime(new Date(d.ms));
     var late = d.cancelled ? '<span class="dep__late is-cancel">Cancelled</span>'
       : '<span class="dep__late">' + (estStr !== schedStr ? '~' + estStr : '') + '</span>';
-    return '<div class="dep-row' + (d.cancelled ? ' is-cancelled' : '') + (split ? ' dep-row--split' : '') + '">' +
+    return '<div class="dep-row' + (d.cancelled ? ' is-cancelled' : '') + (split ? ' dep-row--split' : '') + '" data-g="' + (group || 0) + '">' +
       '<span class="dep__line dep__line--' + kind + '">' + String(d.line).replace(/[^A-Za-z0-9]/g, '') + '</span>' +
       '<span class="dep__dest">' + String(d.dest).replace(/[<>&]/g, '') + '</span>' +
       '<span class="dep__when">' + (tag ? '<span class="dep__tag">' + tag + '</span>' : '') +
@@ -1713,11 +1440,44 @@
         var gapBefore = prev ? it.sched - prev.sched : it.ms - now;
         var isFirst = gapBefore > NIGHT_GAP_MS;
         var isLast = !isFirst && !!next && (next.sched - it.sched > NIGHT_GAP_MS);
-        html += depRow('train', it, isFirst ? 'First' : isLast ? 'Last' : '', g === 1 && k === 0 && html !== '');
+        html += depRow('train', it, isFirst ? 'First' : isLast ? 'Last' : '', g === 1 && k === 0 && html !== '', g);
       }
     }
     el.innerHTML = html;
+    fitBoard(el);
   }
+
+  // Drop rows that don't fit (e.g. while a notice or lightning alert is
+  // showing): always from the bottom of the longer direction, so both
+  // directions stay visible and the first direction keeps the extra row.
+  function fitBoard(el){
+    var guard = 30;
+    while (el.scrollHeight > el.clientHeight + 1 && guard-- > 0){
+      var rows = el.querySelectorAll('.dep-row');
+      if (rows.length <= 2) break;
+      var last = [null, null], n = [0, 0];
+      for (var i = 0; i < rows.length; i++){
+        var g = rows[i].getAttribute('data-g') === '1' ? 1 : 0;
+        last[g] = rows[i]; n[g]++;
+      }
+      var drop = n[1] >= n[0] ? last[1] : last[0];
+      if (!drop) drop = last[0] || last[1];
+      drop.parentNode.removeChild(drop);
+    }
+    if (el.querySelector('.dep__late:not(:empty)')) el.classList.add('has-late');
+    else el.classList.remove('has-late');
+  }
+  function fitBoards(){
+    var a = document.getElementById('trainList'), b = document.getElementById('busList');
+    if (a) fitBoard(a);
+    if (b) fitBoard(b);
+  }
+  // full redraw (rows can come back when there is room again)
+  function renderDepartures(){
+    if (typeof renderTrains === 'function') renderTrains();
+    if (typeof renderBuses === 'function') renderBuses();
+  }
+  window.addEventListener('resize', function(){ renderDepartures(); });
 
   /* ---------- Station notices for Kilo (track works, replacement buses...) ---------- */
   // Fintraffic passenger information (RAMI). only_general=true: notices about the
@@ -1757,11 +1517,12 @@
         }
       }
       var box = document.getElementById('trainNotice');
-      if (!texts.length) { box.hidden = true; return; }
-      var more = texts.length > 1 ? '<span class="map-notice__more">(+' + (texts.length - 1) + ' more)</span>' : '';
+      if (!texts.length) { box.hidden = true; renderDepartures(); return; }
+      var more = texts.length > 1 ? '<span class="train-notice__more">(+' + (texts.length - 1) + ' more)</span>' : '';
       document.getElementById('trainNoticeText').innerHTML =
         texts[0].replace(/[<>&]/g, '') + more;
       box.hidden = false;
+      renderDepartures();
     }).catch(function(){ /* keep whatever is showing; try again next round */ })
       .then(function(){
         clearTimeout(noticeTimer);
@@ -1796,9 +1557,14 @@
   // Get a key: https://portal-api.digitransit.fi -> sign up -> subscribe to the
   // API -> "Profile" -> "Show". Paste it between the quotes below.
   var HSL_API_KEY = '22b0d988bc2c4b8b88f0b25c8f7e8828';
-  var BUS_STOP_CODES = ['E1827', 'E1826'];   // E1827 towards Leppävaara, E1826 towards Matinkylä (shown in this order)
+  var BUS_STOP_CODES = ['E1827', 'E1826'];   // E1827 towards Leppävaara, E1826 towards Matinkylä
   var BUS_STOP_NAME = 'Trillakatu';
-  var BUS_ROWS = [3, 2];     // rows shown per stop, same order as BUS_STOP_CODES
+  // Which stop goes on top with more rows, by time of day.
+  // 06:00-12:00: Matinkylä first; 12:00-06:00: Leppävaara first.
+  var BUS_MORNING_FROM = 6, BUS_MORNING_TO = 12;
+  var BUS_ORDER_MORNING = ['E1826', 'E1827'];
+  var BUS_ORDER_REST    = ['E1827', 'E1826'];
+  var BUS_ROWS = [4, 4];     // most rows: top stop, then the lower stop; fewer if they don't fit
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
@@ -1880,20 +1646,24 @@
     else if ((busOkAt && now - busOkAt > 10 * 60 * 1000) || (!busOkAt && busError)) msg = 'Bus times unavailable · retrying';
     if (msg) { el.innerHTML = '<div class="board__empty">' + msg + '</div>'; return; }
     var html = '';
-    for (var s = 0; s < BUS_STOP_CODES.length; s++){
+    var hr = new Date(now).getHours();
+    var order = (hr >= BUS_MORNING_FROM && hr < BUS_MORNING_TO) ? BUS_ORDER_MORNING : BUS_ORDER_REST;
+    for (var s = 0; s < order.length; s++){
       var shown = 0;
       for (var i = 0; i < busDepartures.length && shown < BUS_ROWS[s]; i++){
         var d = busDepartures[i];
-        if (d.stop !== BUS_STOP_CODES[s] || d.ms <= now - 30 * 1000) continue;
-        html += depRow('bus', d, '', shown === 0 && html !== '');   // divider between directions
+        if (d.stop !== order[s] || d.ms <= now - 30 * 1000) continue;
+        html += depRow('bus', d, '', shown === 0 && html !== '', s);   // divider between directions
         shown++;
       }
     }
     el.innerHTML = html || '<div class="board__empty">' + (busOkAt ? 'No more buses tonight' : 'Loading buses…') + '</div>';
+    fitBoard(el);
   }
 
   loadBuses();
   setInterval(renderBuses, 15 * 1000);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderDepartures);
 
   loadWeather(); // reschedules itself; also refreshes the FMI strips
 
@@ -1906,7 +1676,6 @@
     loadNotices();
     loadBuses();
     loadLightning();
-    loadRadar();
   });
 
   /* keep the day/night tint updating smoothly between fetches */
