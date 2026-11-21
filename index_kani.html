@@ -51,14 +51,14 @@
   }
 
   .dash {
-    --row-h: calc(var(--u) * 4.2);   /* one departure row */
+    --row-h: calc(var(--u) * 4.0);   /* one departure row */
     position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--gap);
     height: 100vh;
     width: 100vw;
-    padding: calc(var(--u) * 1.2) calc(var(--u) * 1.6) calc(var(--u) * 0.9);
+    padding: calc(var(--u) * 1.2) calc(var(--u) * 1.6) calc(var(--u) * 0.5);
     background:
       radial-gradient(ellipse at 15% 0%, rgba(79,209,197,0.07), transparent 55%),
       radial-gradient(ellipse at 100% 100%, rgba(244,169,74,0.05), transparent 55%),
@@ -340,7 +340,7 @@
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: var(--radius);
-    padding: calc(var(--u) * 1.1) calc(var(--u) * 1.0) calc(var(--u) * 0.8);
+    padding: calc(var(--u) * 0.9) calc(var(--u) * 1.0) calc(var(--u) * 0.6);
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -433,6 +433,7 @@
 
   .dash__footer {
     flex: 0 0 auto;
+    margin-top: calc(var(--u) * -0.4);
     display: flex;
     align-items: center;
     gap: calc(var(--u) * 1.5);
@@ -496,8 +497,8 @@
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: calc(var(--u) * 1.4);
-    padding: calc(var(--u) * 0.45) calc(var(--u) * 1.2);
-    font-size: calc(var(--u) * 1.75);
+    padding: calc(var(--u) * 0.2) calc(var(--u) * 1.0);
+    font-size: calc(var(--u) * 1.5);
     font-weight: 600;
     color: var(--text);
   }
@@ -650,10 +651,8 @@
 
   <footer class="dash__footer">
     <div class="kani-greet" id="kaniGreet" hidden></div>
-    <div class="footer__meta">
-      <div id="updatedAt">Starting up&hellip;</div>
-      <div>Data: FMI, Open-Meteo, Fintraffic / digitraffic.fi, HSL</div>
-    </div>
+    <!-- Data: FMI (CC BY 4.0), Open-Meteo, Fintraffic / digitraffic.fi (CC BY 4.0), HSL / Digitransit -->
+    <div class="footer__meta" id="updatedAt" title="Data: FMI, Open-Meteo, Fintraffic / digitraffic.fi, HSL">Starting up&hellip;</div>
   </footer>
 
 </div>
@@ -1337,7 +1336,7 @@
   // westbound ones (E to Kauklahti, U to Kirkkonummi...), each with its destination.
   var TRAIN_STATION = 'KIL';
   var TRAINS_REQUESTED = 20;
-  var TRAIN_ROWS = [4, 4];   // most rows: [towards Helsinki, westbound]; fewer if they don't fit
+  var TRAIN_ROWS = [5, 4];   // most rows: [towards Helsinki, westbound]; fewer if they don't fit
   var NIGHT_GAP_MS = 90 * 60 * 1000;   // a gap this long means "last train" / "first train"
   var TRAIN_URL = 'https://rata.digitraffic.fi/api/v1/live-trains/station/' + TRAIN_STATION +
     '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=' + TRAINS_REQUESTED + '&include_nonstopping=false';
@@ -1564,7 +1563,7 @@
   var BUS_MORNING_FROM = 6, BUS_MORNING_TO = 12;
   var BUS_ORDER_MORNING = ['E1826', 'E1827'];
   var BUS_ORDER_REST    = ['E1827', 'E1826'];
-  var BUS_ROWS = [4, 4];     // most rows: top stop, then the lower stop; fewer if they don't fit
+  var BUS_ROWS = [5, 4];     // most rows: top stop, then the lower stop; fewer if they don't fit
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
