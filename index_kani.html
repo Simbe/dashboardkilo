@@ -770,7 +770,7 @@
 <script>
 (function(){
 
-  var VERSION = '3.0';  // long-press the bunny to see this on the tablet
+  var VERSION = '3.1';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -2095,7 +2095,9 @@
     var night = isKaniNight(p);
     var cls = ['kani'];
     if (night) cls.push('is-sleep');
-    if (s.temp !== null && s.temp <= -5) cls.push('is-cold');
+    // beanie + scarf by the "feels like" temperature, same as the clothing tip
+    var feel = s.feels !== null && s.feels !== undefined ? s.feels : s.temp;
+    if (feel !== null && feel <= -5) cls.push('is-cold');
     if (/^(rain|drizzle|thunder|sleet)$/.test(s.kind)) cls.push('is-rain');
     if (s.kind === 'snow' || s.kind === 'sleet') cls.push('is-snow');
     if (!night && s.kind === 'clear-day' && s.temp !== null && s.temp >= 15) cls.push('is-sunny');
@@ -2278,7 +2280,7 @@
   function kaniLine(){
     var p = kaniNow(), s = kaniState, special = [];
     if (isKaniNight(p)) special.push('Zzz… kani nukkuu jo.');
-    if (s.temp !== null && s.temp <= -5) special.push('Brr! Kanin korvat jäätyy.');
+    if ((s.feels !== null ? s.feels : s.temp) !== null && (s.feels !== null ? s.feels : s.temp) <= -5) special.push('Brr! Kanin korvat jäätyy.');
     if (/^(rain|drizzle|thunder|sleet)$/.test(s.kind)) special.push('Sateenvarjo mukaan, kani muistuttaa! ☔');
     if (s.kind === 'snow') special.push('Lunta! Kani rakentaa lumikanin. ⛄');
     if (s.kind === 'clear-day' && s.temp >= 15) special.push('Aurinkolasit päähän! 😎');
@@ -2306,10 +2308,16 @@
     if (!bunny || !bubble) return;
     bubble.textContent = text;
     bubble.className = 'kani-bubble';                 // measure while hidden
+    // To the right of the bunny, inside the weather panel: it may cover the
+    // stats for a moment, but never the date and clock above.
     var r = bunny.getBoundingClientRect();
-    var left = Math.min(r.left + r.width * 0.55, window.innerWidth - bubble.offsetWidth - 8);
-    var top = Math.max(8, r.top - bubble.offsetHeight + r.height * 0.15);
-    bubble.style.left = Math.max(8, left) + 'px';
+    var panel = bunny.closest('.current-panel').getBoundingClientRect();
+    var left = r.left + r.width * 0.62;
+    bubble.style.maxWidth = Math.max(160, panel.right - 10 - left) + 'px';
+    var h = bubble.offsetHeight;
+    var top = r.top + r.height * 0.12;
+    top = Math.max(panel.top + 8, Math.min(top, panel.bottom - 8 - h));   // a very long text may hang below, never above
+    bubble.style.left = left + 'px';
     bubble.style.top = top + 'px';
     bubble.className = 'kani-bubble show';
     clearTimeout(bubbleTimer);
