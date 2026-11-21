@@ -180,6 +180,15 @@
     align-items: center;
     padding: calc(var(--u) * 1.2) calc(var(--u) * 2.2) calc(var(--u) * 1.3);
   }
+  /* left side: temperature, condition and feels-like on the left, the bunny
+     standing next to all three on the right */
+  .current__main {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: calc(var(--u) * 1.2);
+    align-items: center;
+  }
+  .current__top, .current__cond, .current__feels { grid-column: 1; }
   .current__top {
     display: flex;
     align-items: center;
@@ -391,6 +400,8 @@
     font-weight: 700;
     font-size: calc(var(--u) * 1.9);
   }
+  /* night lines like 114N: smaller digits so the badge stays the usual width */
+  .dep__line--long { font-size: calc(var(--u) * 1.5); padding: 0 calc(var(--u) * 0.25); letter-spacing: -0.02em; }
   .dep__line--train { background: #8C4799; }   /* HSL commuter-train purple */
   .dep__line--bus { background: #007AC9; }     /* HSL bus blue */
   .dep__dest {
@@ -426,7 +437,6 @@
     font-weight: 600;
     color: var(--amber);
   }
-  .dep__late.is-cancel { font-family: inherit; font-size: calc(var(--u) * 1.8); color: var(--red); }
   .dep-row.is-cancelled .dep__time { text-decoration: line-through; color: var(--muted-dim); }
   .dep-row.is-cancelled .dep__dest { color: var(--muted-dim); }
   .board__empty { font-size: calc(var(--u) * 2.0); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
@@ -453,18 +463,21 @@
 
   /* KANI EXTRAS */
   .kani {
-    flex: 0 0 auto;
-    align-self: flex-end;
-    width: calc(var(--u) * 8);
-    height: calc(var(--u) * 8.65);
-    margin-left: calc(var(--u) * 0.6);
+    --kani-h: calc(var(--u) * 15.6);
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: end;
+    height: var(--kani-h);
+    width: calc(var(--kani-h) * 0.925);    /* the drawing is 74 x 80 */
     /* the top of the drawing is headroom for the umbrella: let it tuck into
-       the panel's top padding so the panel doesn't grow */
+       the panel's top padding, and the shadow into the bottom padding, so the
+       panel doesn't grow */
     margin-top: calc(var(--u) * -1.2);
-    margin-bottom: calc(var(--u) * -0.4);
+    margin-bottom: calc(var(--u) * -0.5);
   }
   .kani svg, .kani-hop svg { width: 100%; height: 100%; overflow: visible; display: block; }
-  .kani .k-acc, .kani .k-eyes-closed, .kani-hop .k-acc, .kani-hop .k-eyes-closed { display: none; }
+  .kani .k-acc, .kani .k-eyes-closed, .kani-hop .k-acc, .kani-hop .k-eyes-closed,
+  .kani-giant .k-acc, .kani-giant .k-eyes-closed { display: none; }
   .kani.is-cold .k-acc-hat, .kani.is-cold .k-acc-scarf,
   .kani.is-rain .k-acc-umbrella, .kani.is-snow .k-acc-snow,
   .kani.is-sunny .k-acc-glasses, .kani.is-party .k-acc-party,
@@ -472,7 +485,7 @@
   .kani.is-sleep .k-acc-sleep, .kani.is-sleep .k-eyes-closed { display: inline; }
   .kani.is-sleep .k-eyes-open { display: none; }
   .kani.is-party .k-acc-hat { display: none; }          /* party hat wins over the beanie */
-  #curTemp, #kani, #clockTime { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  #curTemp, #kani, #clockTime, #clockDate { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   html, body { touch-action: manipulation; }   /* no double-tap zoom, so quick taps all count */
 
   /* speech bubble */
@@ -531,6 +544,75 @@
     45%      { transform: translateY(calc(var(--u) * -2.4)); }
   }
 
+  /* tap the date 5 times: a giant bunny bounces, trembles and talks */
+  .kani-giant {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(6, 9, 20, 0.6);
+    animation: giantIn 0.3s ease-out both;
+    overflow: hidden;
+  }
+  .kani-giant.is-leaving { animation: giantOut 0.45s ease-in forwards; }
+  .kani-giant__hop {
+    height: min(78vh, 96vw / 0.925);
+    width: calc(min(78vh, 96vw / 0.925) * 0.925);
+    margin-bottom: 2vh;
+    transform-origin: 50% 100%;
+    animation: giantBounce 0.75s cubic-bezier(.3,.6,.4,1) infinite;
+  }
+  .kani-giant__shake { width: 100%; height: 100%; animation: giantShake 0.11s linear infinite; }
+  .kani-giant__sayrow {
+    position: absolute;
+    top: 7vh;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+  }
+  .kani-giant__say {
+    position: relative;
+    padding: calc(var(--u) * 1.6) calc(var(--u) * 3);
+    border-radius: calc(var(--u) * 3);
+    background: #EAF2FF;
+    color: #0B1220;
+    font-size: calc(var(--u) * 5.2);
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+    animation: giantSay 0.5s cubic-bezier(.2,1.6,.4,1) 0.25s both, giantShake 0.11s linear 0.75s infinite;
+    transform-origin: 50% 100%;
+  }
+  .kani-giant__say::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--u) * -1.6);
+    margin-left: calc(var(--u) * -1.6);
+    border: calc(var(--u) * 1.6) solid transparent;
+    border-top-color: #EAF2FF;
+    border-bottom: 0;
+  }
+  @keyframes giantIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes giantOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes giantBounce {
+    0%, 100% { transform: translateY(0) scale(1.05, 0.93); }
+    15%      { transform: translateY(0) scale(0.97, 1.04); }
+    50%      { transform: translateY(-14vh) scale(0.98, 1.03); }
+    85%      { transform: translateY(0) scale(1.02, 0.98); }
+  }
+  @keyframes giantShake {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(-0.9%, 0.3%) rotate(-1.4deg); }
+    50%  { transform: translate(0.8%, -0.3%) rotate(1.2deg); }
+    75%  { transform: translate(-0.5%, 0.4%) rotate(-0.8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+  @keyframes giantSay { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
   /* Easter: bunny ears on the Now / Today boxes */
   .dash.is-easter .strip-item.is-now { position: relative; padding-top: calc(var(--u) * 1.7); }
   .dash.is-easter .strip-item.is-now::before {
@@ -577,14 +659,14 @@
   </div>
 
   <section class="panel current-panel">
-    <div>
+    <div class="current__main">
       <div class="current__top">
         <div class="current__icon" id="curIcon"><svg class="wi" viewBox="-1 -1 26 26"><path class="wi-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a4 4 0 0 0 0-8z"/></svg></div>
         <div class="current__temp num" id="curTemp">--&deg;</div>
-        <div class="kani" id="kani" title="Kani"></div>
       </div>
       <div class="current__cond" id="curCond">&mdash;</div>
       <div class="current__feels">Feels like <span class="num" id="curFeels">--&deg;</span></div>
+      <div class="kani" id="kani" title="Kani"></div>
     </div>
     <div class="current__grid">
       <div class="stat"><span class="stat__label">Wind</span><span class="stat__value num" id="curWind">&ndash;</span></div>
@@ -1132,6 +1214,7 @@
         document.getElementById('curGust').innerHTML = withUnit(cur.wind_gusts_10m, 'm/s');
         document.getElementById('curHumidity').innerHTML = withUnit(cur.relative_humidity_2m, '%');
         document.getElementById('curPressure').innerHTML = withUnit(cur.pressure_msl, 'hPa');
+        fitKani();
 
         // sun times first, so hourly icons can pick day/night variants
         updateSunArc(omDate(data.daily.sunrise[0], off), omDate(data.daily.sunset[0], off));
@@ -1360,10 +1443,11 @@
   function depRow(kind, d, tag, split, group){
     var schedStr = fmtTime(new Date(d.sched));
     var estStr = fmtTime(new Date(d.ms));
-    var late = d.cancelled ? '<span class="dep__late is-cancel">Cancelled</span>'
-      : '<span class="dep__late">' + (estStr !== schedStr ? '~' + estStr : '') + '</span>';
+    // cancelled: the row is struck through and dimmed (CSS), no estimate shown
+    var late = '<span class="dep__late">' + (!d.cancelled && estStr !== schedStr ? '~' + estStr : '') + '</span>';
+    var line = String(d.line).replace(/[^A-Za-z0-9]/g, '');
     return '<div class="dep-row' + (d.cancelled ? ' is-cancelled' : '') + (split ? ' dep-row--split' : '') + '" data-g="' + (group || 0) + '">' +
-      '<span class="dep__line dep__line--' + kind + '">' + String(d.line).replace(/[^A-Za-z0-9]/g, '') + '</span>' +
+      '<span class="dep__line dep__line--' + kind + (line.length > 3 ? ' dep__line--long' : '') + '">' + line + '</span>' +
       '<span class="dep__dest">' + String(d.dest).replace(/[<>&]/g, '') + '</span>' +
       '<span class="dep__when">' + (tag ? '<span class="dep__tag">' + tag + '</span>' : '') +
       '<span class="dep__time">' + schedStr + '</span>' + late + '</span></div>';
@@ -1507,14 +1591,10 @@
   // Get a key: https://portal-api.digitransit.fi -> sign up -> subscribe to the
   // API -> "Profile" -> "Show". Paste it between the quotes below.
   var HSL_API_KEY = '22b0d988bc2c4b8b88f0b25c8f7e8828';
-  var BUS_STOP_CODES = ['E1827', 'E1826'];   // E1827 towards Leppävaara, E1826 towards Matinkylä
+  // Shown in this order: E1827 towards Leppävaara on top, E1826 towards Matinkylä below
+  var BUS_STOP_CODES = ['E1827', 'E1826'];
   var BUS_STOP_NAME = 'Trillakatu';
-  // Which stop goes on top with more rows, by time of day.
-  // 06:00-12:00: Matinkylä first; 12:00-06:00: Leppävaara first.
-  var BUS_MORNING_FROM = 6, BUS_MORNING_TO = 12;
-  var BUS_ORDER_MORNING = ['E1826', 'E1827'];
-  var BUS_ORDER_REST    = ['E1827', 'E1826'];
-  var BUS_ROWS = [5, 5];     // most rows: top stop, then the lower stop; fewer if they don't fit
+  var BUS_ROWS = [5, 5];     // most rows: Leppävaara, Matinkylä; fewer if they don't fit
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
@@ -1596,8 +1676,7 @@
     else if ((busOkAt && now - busOkAt > 10 * 60 * 1000) || (!busOkAt && busError)) msg = 'Bus times unavailable · retrying';
     if (msg) { el.innerHTML = '<div class="board__empty">' + msg + '</div>'; return; }
     var html = '';
-    var hr = helsinkiHour(new Date(now));
-    var order = (hr >= BUS_MORNING_FROM && hr < BUS_MORNING_TO) ? BUS_ORDER_MORNING : BUS_ORDER_REST;
+    var order = BUS_STOP_CODES;
     for (var s = 0; s < order.length; s++){
       var shown = 0;
       for (var i = 0; i < busDepartures.length && shown < BUS_ROWS[s]; i++){
@@ -1640,6 +1719,7 @@
      - the bunny in the weather panel dresses for the weather and sleeps at night
      - tap the temperature or the bunny: the bunny says something
      - tap the clock 5 times in a row: carrot and bunny rain
+     - tap the date 5 times in a row: a giant bunny bounces and trembles
      - now and then (07-21) a bunny hops across the bottom of the screen
      - full-moon nights: the moon icon shows a full moon with a tiny bunny
      Settings (dates only, no names) are near the top of this script.          */
@@ -1699,6 +1779,25 @@
     updateKani();
   }
 
+  // The bunny is drawn big, but a wide temperature (e.g. -23°) needs that room
+  // for the stats on the right: shrink the bunny step by step until they fit.
+  var KANI_MAX_U = 15.6, KANI_MIN_U = 7.8;
+  function fitKani(){
+    var el = document.getElementById('kani');
+    if (!el) return;
+    var vals = document.querySelectorAll('.current__grid .stat__value');
+    function crowded(){
+      for (var i = 0; i < vals.length; i++) if (vals[i].scrollWidth > vals[i].clientWidth + 1) return true;
+      return false;
+    }
+    var u = KANI_MAX_U;
+    el.style.setProperty('--kani-h', 'calc(var(--u) * ' + u + ')');
+    while (crowded() && u > KANI_MIN_U){
+      u = Math.max(KANI_MIN_U, u - 0.4);
+      el.style.setProperty('--kani-h', 'calc(var(--u) * ' + u.toFixed(1) + ')');
+    }
+  }
+
   function isKaniNight(p){ return p.h >= 22 || p.h < 6; }
 
   function updateKani(){
@@ -1727,16 +1826,105 @@
     'Pomppis! Kani kävi täällä.',
     'Porkkana päivässä pitää kanin iloisena. 🥕',
     'Tänään on hyvä päivä olla kani.',
-    'Halaus kanilta! 🤍',
+    'Halaus kanilta! 💛',
     'Pupu pomppii, kani kiitää!',
     'Kanin sääennuste: pörröistä!',
     'Kani on aina valmis välipalalle.',
     'Korvat pystyyn!',
     'Psst… kani tietää, missä porkkanat on.',
     'Rengas maaliin ja tuuletus! 🥅',
-    'Ringette-kanit, tsemppiä!'
+    'Ringette-kanit, tsemppiä!',
+    'Kani muistuttaa: juo vettä! 💧',
+    'Oletko jo halannut ketään tänään? 🤗',
+    'Kanit eivät kiirehdi. Ne pomppivat.',
+    'Kaksi kania on parempi kuin yksi. 🐰🐰',
+    'Kanin mielestä olet huippu!',
+    'Hymyile, kani näkee sinut! 😊',
+    'Porkkanakakku on paras kakku. 🥕🍰',
+    'Kani harjoittelee pomppuja. Hyvin menee!',
+    'Kanilla ei ole peukaloita, mutta se pitää silti peukkuja! 👍',
+    'Pörröisyystaso tänään: 100 %.',
+    'Muista hengähtää välillä. Kani tekee niin koko ajan.',
+    'Kani tykkää sinusta kuuhun ja takaisin! 🌙',
+    'Tiesitkö? Kanit voivat nukkua silmät auki.',
+    'Tiesitkö? Kanin hampaat kasvavat koko elämän ajan.',
+    'Tiesitkö? Kani voi loikata jopa metrin korkeudelle!',
+    'Tiesitkö? Iloisen kanin ilmahyppyä sanotaan binkyksi.',
+    'Tiesitkö? Kani näkee melkein joka suuntaan kääntämättä päätään.',
+    'Tiesitkö? Kani voi nyrpistää nenäänsä jopa sata kertaa minuutissa.',
+    'Tiesitkö? Kanin isot korvat auttavat sitä pysymään viileänä.',
+    'Tiesitkö? Kanit tervehtivät toisiaan nenä nenää vasten.',
+    'Kani tekee tänään pienen ilohypyn. ✨',
+    'Kani sanoo: sinä pystyt siihen!',
+    'Kani kuiskaa: läksyt ensin, sitten herkut. 📚',
+    'Kani lukee kirjaa nimeltä Porkkanan arvoitus. 📖',
+    'Kanin lempiväri on oranssi. Arvaatko miksi? 🥕',
+    'Kani tilasi pizzan. Täytteenä porkkanaa. 🍕',
+    'Kanin ostoslista: porkkana, porkkana, porkkana.',
+    'Kani teki ennätyksen: 47 pomppua putkeen!',
+    'Kani osaa laskea porkkanoita: yksi, kaksi, monta!',
+    'Kani ehdottaa tanssitaukoa! 💃',
+    'Kotikanit ovat parhaita kaneja. 🏠',
+    'Kani vahtii kotia. Kaikki hyvin täällä!',
+    'Kani piilotti porkkanan. Löydätkö sen?',
+    'Kanilla on hyvä päivä. Toivottavasti sinullakin!',
+    'Kani lähettää pörröisen pusun! 😘',
+    'Kani on ylpeä sinusta.',
+    'Kanin tärkein sääntö: ole kiltti.',
+    'Kanin toinen sääntö: syö porkkanaa.',
+    'Kanin kolmas sääntö: pompi aina kun voit!',
+    'Mailat valmiina, kanit!',
+    'Ringettessä rengas maaliin, kanilla porkkana suuhun!',
+    'Hyvä syöttö, kani! 👏',
+    'Harjoitus tekee mestarin. Ja porkkanat.',
+    'Kani tuulettaa: MAALI! 🥅',
+    'Luistimet terävinä, kani valmiina! ⛸️',
+    'Joukkue on vahvempi kuin yksikään kani yksin.',
+    'Kani kannustaa katsomossa! 📣',
+    'Kani harjoittelee luistelua. Vähän liukasta…',
+    'Rengas, maila ja kani. Täydellinen joukkue!',
+    'Kani on nälkäinen. Mitähän syötäisiin?',
+    'Välipalavinkki kanilta: omena! 🍎',
+    'Kani söi juuri salaattia. Rouskis!',
+    'Kaakaota kanille, kiitos! ☕',
+    'Pullaa ja kaneja: hyvän päivän resepti.',
+    'Kani tykkää herkuista. Ja sinusta vielä enemmän!',
+    'Nyt on hyvä hetki nauraa. 😄',
+    'Mikä kani osaa lentää? Lentokani! ✈️',
+    'Mitä kani sanoo kampaajalle? Korvat saa jäädä!',
+    'Mikä kani asuu metsässä? Metsäkani. Yllätys!',
+    'Kani venytteli juuri. Venyttele sinäkin!',
+    'Kanin jumppa: kolme pomppua ja korvat pystyyn!',
+    'Kani suosittelee: ulos haukkaamaan happea! 🌳',
+    'Kani bongasi linnun ikkunasta. 🐦',
+    'Kani laskee tähtiä. Niitä on tosi monta! ⭐',
+    'Kani haaveilee isosta porkkanapellosta.',
+    'Kani on kiitollinen kodistaan. 💛',
+    'Kani muistuttaa: kiitos on taikasana. ✨',
+    'Anteeksi on myös taikasana, sanoo kani.',
+    'Pienikin pomppu vie eteenpäin.',
+    'Virheistä oppii. Kanikin kompastuu joskus.',
+    'Jos jännittää, hengitä syvään. Kani tekee niin.',
+    'Hyvä uni tekee kanista iloisen. 😴',
+    'Siivotaanko yhdessä? Kani auttaa!',
+    'Kani auttaisi tiskeissä, mutta tassut kastuvat.',
+    'Kani unohti, mitä piti sanoa. Pomppis!',
+    'Kani vaihtoi kampausta. Huomasitko?',
+    'Kani on salaa supersankari.',
+    'Superkani tulee apuun!',
+    'Kani kävi Kilon asemalla katsomassa junia. 🚆',
+    'Kani odottaa bussia. Kohta se tulee! 🚌',
+    'Kani tarkistaa aina lähtöajat. Fiksu kani!',
+    'Kani tietää: ajoissa lähtenyt ehtii junaan.',
+    'Mitä kivaa tänään tapahtui? Kani haluaa kuulla!',
+    'Kerro kanille jotain kivaa!',
+    'Kani kuuntelee aina. 🐰',
+    'Kani on täällä. Aina. 💛',
+    'Kanin taikasana tänään: pörröinen!',
+    'Kani pomppii iloisena, koska sinä olet siinä.',
+    'Kaikki kanit ovat erityisiä. Varsinkin sinä!'
   ];
-  var lastLine = -1, bubbleTimer = null;
+  var kaniBag = [], lastLine = -1, bubbleTimer = null;
 
   function kaniLine(){
     var p = kaniNow(), s = kaniState, special = [];
@@ -1747,11 +1935,18 @@
     if (s.kind === 'clear-day' && s.temp >= 15) special.push('Aurinkolasit päähän! 😎');
     if (isBirthday(p)) special.push('Onnea päivänsankarille! 🎉');
     if (isPracticeDay(p) || isGameDay(p)) special.push('Muista luistimet ja maila! ⛸️');
-    if (special.length && Math.random() < 0.5) return special[Math.floor(Math.random() * special.length)];
-    var i;
-    do { i = Math.floor(Math.random() * KANI_LINES.length); } while (i === lastLine && KANI_LINES.length > 1);
-    lastLine = i;
-    return KANI_LINES[i];
+    // weather / night / birthday lines now and then; otherwise the 100 everyday lines
+    if (special.length && Math.random() < 0.25) return special[Math.floor(Math.random() * special.length)];
+    // shuffle bag: every line once, in random order, before any repeats
+    if (!kaniBag.length){
+      for (var i = 0; i < KANI_LINES.length; i++) kaniBag.push(i);
+      for (var j = kaniBag.length - 1; j > 0; j--){
+        var r = Math.floor(Math.random() * (j + 1)), tmp = kaniBag[j]; kaniBag[j] = kaniBag[r]; kaniBag[r] = tmp;
+      }
+      if (kaniBag.length > 1 && kaniBag[kaniBag.length - 1] === lastLine) kaniBag.unshift(kaniBag.pop());
+    }
+    lastLine = kaniBag.pop();
+    return KANI_LINES[lastLine];
   }
 
   function kaniSay(){
@@ -1794,6 +1989,26 @@
     setTimeout(function(){ if (box.parentNode) box.parentNode.removeChild(box); }, 7000);
   }
 
+  /* ---- tap the date (top left) 5 times in a row: a giant trembling bunny ---- */
+  var dateTaps = [];
+  function kaniGiant(){
+    if (document.querySelector('.kani-giant')) return;
+    var box = document.createElement('div');
+    box.className = 'kani-giant';
+    box.setAttribute('aria-hidden', 'true');
+    box.innerHTML = '<div class="kani-giant__sayrow"><div class="kani-giant__say">Mä ihan tärisen!</div></div>' +
+      '<div class="kani-giant__hop"><div class="kani-giant__shake">' + KANI_SVG + '</div></div>';
+    document.body.appendChild(box);
+    var gone = false;
+    function leave(){
+      if (gone) return;
+      gone = true;
+      box.className = 'kani-giant is-leaving';
+      setTimeout(function(){ if (box.parentNode) box.parentNode.removeChild(box); }, 500);
+    }
+    setTimeout(leave, 6000);   // taps don't close it: an extra 6th tap mustn't cut it short
+  }
+
   /* ---- now and then, a bunny hops across the bottom of the screen ---- */
   function kaniHop(){
     if (REDUCED_MOTION || document.querySelector('.kani-hop')) return;
@@ -1828,7 +2043,17 @@
       clockTaps.push(now);
       if (clockTaps.length >= 5) { clockTaps = []; kaniRain(); }
     });
+    var date = document.getElementById('clockDate');
+    if (date) date.addEventListener('pointerup', function(){
+      var now = Date.now();
+      if (dateTaps.length && now - dateTaps[dateTaps.length - 1] > 1500) dateTaps = [];
+      dateTaps.push(now);
+      if (dateTaps.length >= 5) { dateTaps = []; kaniGiant(); }
+    });
     updateKani();
+    fitKani();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitKani);
+    window.addEventListener('resize', fitKani);
     setInterval(updateKani, 60 * 1000);
     scheduleHop();
   })();
