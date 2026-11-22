@@ -524,7 +524,7 @@
   .kani svg, .kani-hop svg { width: 100%; height: 100%; overflow: visible; display: block; }
   .kani .k-acc, .kani .k-eyes-closed, .kani-hop .k-acc, .kani-hop .k-eyes-closed,
   .kani-giant .k-acc, .kani-giant .k-eyes-closed { display: none; }
-  .kani.is-cold .k-acc-hat, .kani.is-cold .k-acc-scarf,
+  .kani.is-hat .k-acc-hat, .kani.is-cold .k-acc-scarf,
   .kani.is-rain .k-acc-umbrella, .kani.is-snow .k-acc-snow,
   .kani.is-sunny .k-acc-glasses, .kani.is-party .k-acc-party,
   .kani.is-ringette .k-acc-ringette,
@@ -532,7 +532,7 @@
   .kani.is-juhannus .k-acc-wreath, .kani.is-halloween .k-acc-pumpkin,
   .kani.is-sleep .k-acc-sleep, .kani.is-sleep .k-eyes-closed { display: inline; }
   .kani.is-sleep .k-eyes-open { display: none; }
-  .kani.is-party .k-acc-hat { display: none; }          /* party hat wins over the beanie */
+  .kani.is-party .k-acc-hat, .kani.is-juhannus .k-acc-hat { display: none; }   /* party hat / wreath win over the beanie */
   .kani.is-santa .k-acc-hat { display: none; }          /* Santa hat replaces the beanie */
   .kani.is-party .k-acc-santa, .kani.is-party .k-acc-wreath { display: none; }
 
@@ -760,17 +760,16 @@
     </div>
   </section>
 
-  <div class="kani-bubble" id="kaniBubble" aria-live="polite"></div>
-
   <!-- Data: FMI (CC BY 4.0), Open-Meteo, Fintraffic / digitraffic.fi (CC BY 4.0), HSL / Digitransit -->
 
 </div>
+<div class="kani-bubble" id="kaniBubble" aria-live="polite"></div>
 <div class="night-dim" id="nightDim"></div>
 
 <script>
 (function(){
 
-  var VERSION = '3.1';  // long-press the bunny to see this on the tablet
+  var VERSION = '3.2';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -990,6 +989,8 @@
   }
   tickClock();
   setInterval(tickClock, 1000);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeader);
+  window.addEventListener('resize', fitHeader);
 
   /* ---------- FMI WFS helpers ---------- */
   function isoNoMillis(d){
@@ -1182,13 +1183,17 @@
   // "Päivä 6 h 53 min, −3 min": today's daylight and the change from yesterday
   function renderDayLength(daily, di, off){
     var el = document.getElementById('dayLength');
+    // daylight_duration is in seconds (sunrise/sunset are rounded to the
+    // minute, so their difference can be a minute off)
     function len(i){
-      if (i < 0 || !daily.sunrise[i] || !daily.sunset[i]) return null;
+      if (i < 0) return null;
+      if (daily.daylight_duration && typeof daily.daylight_duration[i] === 'number') return daily.daylight_duration[i] / 60;
+      if (!daily.sunrise[i] || !daily.sunset[i]) return null;
       return (omDate(daily.sunset[i], off) - omDate(daily.sunrise[i], off)) / 60000;
     }
     var today = len(di), yesterday = len(di - 1);
     if (today === null) { el.textContent = ''; return; }
-    var h = Math.floor(today / 60), m = Math.round(today - h * 60);
+    var total = Math.round(today), h = Math.floor(total / 60), m = total - h * 60;
     var txt = 'Päivä <b>' + h + ' h ' + m + ' min</b>';
     if (yesterday !== null) {
       var diff = Math.round(today - yesterday);
@@ -1226,7 +1231,7 @@
     + '?latitude=' + LAT + '&longitude=' + LON
     + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day'
     + '&hourly=temperature_2m,precipitation_probability,weather_code'
-    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration'
     + '&timezone=Europe%2FHelsinki&forecast_days=7&past_days=1&wind_speed_unit=ms';   // yesterday: for the day-length change
 
   // Builds a "YYYY-MM-DDTHH" prefix for the current moment in Europe/Helsinki
@@ -1545,7 +1550,7 @@
     priceTimer = setTimeout(loadPrices, ms);
   }
   function fmtCents(c){
-    var s = Math.abs(c) >= 10 ? Math.round(c).toString() : c.toFixed(1).replace('.', ',');
+    var s = Math.abs(c) >= 9.95 ? Math.round(c).toString() : c.toFixed(1).replace('.', ',');
     return s.replace('-', '\u2212');
   }
   function renderPrice(){
@@ -1575,7 +1580,7 @@
       if (best === null || avg < bestAvg) { best = hours[k]; bestAvg = avg; }
     }
     if (best === null) { note.textContent = ''; return; }
-    var h1 = helsinkiHour(new Date(best)), h2 = (h1 + 1) % 24;
+    var h1 = helsinkiHour(new Date(best)), h2 = h1 + 1;   // "klo 23–24" 
     note.innerHTML = best === hourNow ? 'Halvin sähkö <b>nyt</b>' : 'Halvin <b>klo ' + h1 + '\u2013' + h2 + '</b>';
     fitKani();
   }
@@ -2095,8 +2100,10 @@
     var night = isKaniNight(p);
     var cls = ['kani'];
     if (night) cls.push('is-sleep');
-    // beanie + scarf by the "feels like" temperature, same as the clothing tip
+    // dressed by the "feels like" temperature, like the clothing tip says:
+    // beanie from +8 down ("…ja pipo"), scarf too from -5 down
     var feel = s.feels !== null && s.feels !== undefined ? s.feels : s.temp;
+    if (feel !== null && feel <= 8) cls.push('is-hat');
     if (feel !== null && feel <= -5) cls.push('is-cold');
     if (/^(rain|drizzle|thunder|sleet)$/.test(s.kind)) cls.push('is-rain');
     if (s.kind === 'snow' || s.kind === 'sleet') cls.push('is-snow');
@@ -2131,7 +2138,7 @@
     var s = kaniState, f = s.feels !== null ? s.feels : s.temp, t = s.temp;
     if (f === null || f === undefined || t === null) return '';
     var main = f <= -15 ? 'Tosi kylmä! Toppavaatteet, pipo, kaulahuivi ja paksut lapaset.'
-      : f <= -5 ? 'Toppatakki, pipo ja lapaset!'
+      : f <= -5 ? 'Toppatakki, pipo, kaulahuivi ja lapaset!'
       : f <= 2 ? 'Talvitakki, pipo ja hanskat.'
       : f <= 8 ? 'Välikausitakki ja pipo.'
       : f <= 14 ? 'Välikausitakki tai paksu huppari.'
