@@ -28,6 +28,14 @@
     --amber:#F4A94A;
     --teal:#4FD1C5;
     --red:#E8646B;
+    --green:#5BD18B;
+    /* type scale: every text on the page uses one of these
+       (17 / 19 / 22 / 25 / 29 / 39 / 64 / 90 px on the 768 x 1024 tablet) */
+    --fs-xs: calc(var(--u) * 1.66);
+    --fs-s:  calc(var(--u) * 1.86);
+    --fs-m:  calc(var(--u) * 2.15);
+    --fs-l:  calc(var(--u) * 2.44);
+    --fs-xl: calc(var(--u) * 2.83);
     --u: min(1.3333vw, 1vh);
     --gap: calc(var(--u) * 1.1);
     --radius: calc(var(--u) * 1.6);
@@ -51,7 +59,7 @@
   }
 
   .dash {
-    --row-h: calc(var(--u) * 3.9);   /* one departure row */
+    --row-h: calc(var(--u) * 3.85);  /* one departure row */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -124,17 +132,11 @@
   .clock__weekday { color: var(--text); font-weight: 600; }
   .clock__daymonth { color: var(--muted); font-weight: 500; }
   .clock__time {
-    font-size: calc(var(--u) * 5.6);
+    font-size: calc(var(--u) * 6.25);
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.01em;
     white-space: nowrap;
-  }
-  .clock__sec {
-    font-size: 0.5em;
-    font-weight: 500;
-    color: var(--muted-dim);
-    margin-left: 0.12em;
   }
 
   .panel {
@@ -162,7 +164,7 @@
   .train-notice__icon { font-size: calc(var(--u) * 2.4); color: var(--amber); flex: 0 0 auto; margin-top: 0.05em; }
   .train-notice__icon .wi { stroke: currentColor; }
   .train-notice__text {
-    font-size: calc(var(--u) * 1.8);
+    font-size: var(--fs-s);
     line-height: 1.3;
     color: var(--text);
     display: -webkit-box;
@@ -204,17 +206,17 @@
     white-space: nowrap;
   }
   .current__cond {
-    font-size: calc(var(--u) * 2.5);
+    font-size: var(--fs-l);
     font-weight: 600;
     line-height: 1.15;
-    margin-top: calc(var(--u) * 0.7);
+    margin-top: calc(var(--u) * 0.45);
   }
   .current__feels {
-    font-size: calc(var(--u) * 1.9);
+    font-size: var(--fs-m);
     color: var(--muted);
-    margin-top: calc(var(--u) * 0.2);
+    margin-top: calc(var(--u) * 0.15);
   }
-  .current__feels span { color: var(--text); font-weight: 600; }
+  .current__feels span { color: var(--text); font-weight: 700; }
 
   .current__grid {
     display: grid;
@@ -229,15 +231,16 @@
     grid-column: 1 / -1;
     display: flex;
     justify-content: space-between;
-    gap: calc(var(--u) * 1.2);
-    font-size: calc(var(--u) * 1.45);
-    color: var(--muted-dim);
+    gap: calc(var(--u) * 0.8);
+    font-size: var(--fs-xs);
+    color: var(--muted);
     white-space: nowrap;
     min-width: 0;
     overflow: hidden;
   }
-  .current__notes b { color: var(--muted); font-weight: 600; }
-  .price--cheap { color: var(--teal); }
+  .current__notes b { color: var(--text); font-weight: 600; }
+  /* electricity like a traffic light; teal is kept for rain only */
+  .price--cheap { color: var(--green); }
   .price--high { color: var(--amber); }
   .price--vhigh { color: var(--red); }
   /* flag day: a little Finnish flag after the date */
@@ -250,18 +253,18 @@
     min-width: 0;
   }
   .stat__label {
-    font-size: calc(var(--u) * 1.55);
+    font-size: var(--fs-xs);
     font-weight: 500;
     color: var(--muted-dim);
   }
   .stat__value {
-    font-size: calc(var(--u) * 2.9);
+    font-size: var(--fs-xl);
     font-weight: 600;
     line-height: 1.05;
     white-space: nowrap;
   }
   .unit {
-    font-size: 0.5em;
+    font-size: 0.6em;
     font-weight: 500;
     color: var(--muted);
     margin-left: 0.15em;
@@ -270,13 +273,13 @@
   .wind-arrow {
     display: inline-block;
     font-style: normal;
-    color: var(--teal);
+    color: var(--muted);
     margin-left: 0.35em;
     font-size: 0.6em;
     vertical-align: 0.1em;
   }
   .wind-dir {
-    font-size: 0.5em;
+    font-size: 0.6em;
     font-weight: 500;
     color: var(--muted);
     margin-left: 0.1em;
@@ -300,7 +303,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: calc(var(--u) * 0.4) calc(var(--u) * 0.2) calc(var(--u) * 0.45);
+    padding: calc(var(--u) * 0.35) calc(var(--u) * 0.2) calc(var(--u) * 0.4);
     border-radius: calc(var(--u) * 1.1);
   }
   .strip-item.is-now {
@@ -308,7 +311,7 @@
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
   }
   .strip-item__label {
-    font-size: calc(var(--u) * 1.8);
+    font-size: var(--fs-s);
     font-weight: 500;
     color: var(--muted);
     white-space: nowrap;
@@ -317,13 +320,13 @@
   .strip-item__icon { font-size: calc(var(--u) * 3.0); margin: calc(var(--u) * 0.2) 0 calc(var(--u) * 0.1); }
   .strip-item__temp {
     font-family: var(--num);
-    font-size: calc(var(--u) * 2.9);
+    font-size: var(--fs-xl);
     letter-spacing: -0.01em;
     font-weight: 600;
     line-height: 1.1;
     white-space: nowrap;
   }
-  .daily .strip-item__temp { font-size: calc(var(--u) * 2.4); }
+  .daily .strip-item__temp { font-size: var(--fs-l); }
   .daily .strip-item__temp-max { color: var(--text); }
   .daily .strip-item__temp-min { color: var(--muted-dim); margin-left: 0.2em; }
   .strip-item__pop {
@@ -331,16 +334,16 @@
     flex-direction: column;
     align-items: center;
     gap: calc(var(--u) * 0.25);
-    margin-top: calc(var(--u) * 0.2);
+    margin-top: calc(var(--u) * 0.1);
     width: 100%;
   }
   .pop-num {
     font-family: var(--num);
-    font-size: calc(var(--u) * 1.55);
+    font-size: var(--fs-xs);
     font-weight: 500;
     color: var(--teal);
     line-height: 1;
-    min-height: calc(var(--u) * 1.55);
+    min-height: var(--fs-xs);
   }
   .pop-bar {
     width: 56%;
@@ -368,7 +371,7 @@
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: var(--radius);
-    padding: calc(var(--u) * 0.9) calc(var(--u) * 1.0) calc(var(--u) * 0.6);
+    padding: calc(var(--u) * 0.85) calc(var(--u) * 1.0) calc(var(--u) * 0.4);
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -378,7 +381,7 @@
     display: flex;
     align-items: center;
     gap: calc(var(--u) * 0.7);
-    font-size: calc(var(--u) * 2.0);
+    font-size: var(--fs-s);
     font-weight: 600;
     color: var(--muted);
     margin-bottom: calc(var(--u) * 0.5);
@@ -417,7 +420,7 @@
     color: #fff;
     font-family: var(--num);
     font-weight: 700;
-    font-size: calc(var(--u) * 1.9);
+    font-size: var(--fs-s);
   }
   /* night lines like 114N: smaller digits so the badge stays the usual width */
   .dep__line--long { font-size: calc(var(--u) * 1.5); padding: 0 calc(var(--u) * 0.25); letter-spacing: -0.02em; }
@@ -428,7 +431,8 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: calc(var(--u) * 2.2);
+    font-size: var(--fs-m);
+    font-weight: 500;
     color: var(--text);
   }
   .dep__when {
@@ -437,17 +441,17 @@
     align-items: baseline;
     gap: calc(var(--u) * 0.45);
   }
-  .dep__tag { font-size: calc(var(--u) * 1.6); font-weight: 500; color: var(--muted); }
+  .dep__tag { font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
   .dep__time {
     font-family: var(--num);
     font-variant-numeric: tabular-nums;
-    font-size: calc(var(--u) * 2.8);
+    font-size: var(--fs-xl);
     font-weight: 600;
     color: var(--text);
     min-width: calc(var(--u) * 7.4);   /* "22:58" and "14 min" end at the same place */
     text-align: right;
   }
-  .dep__min { font-size: 0.55em; font-weight: 500; color: var(--muted); margin-left: 0.2em; }
+  .dep__min { font-size: 0.6em; font-weight: 500; color: var(--muted); margin-left: 0.2em; }
   /* live-estimate column: only takes room on a board that has an estimate
      right now, and then on every row of that board so the times line up */
   .dep__late:empty { display: none; }
@@ -455,13 +459,13 @@
   .dep__late {
     font-family: var(--num);
     font-variant-numeric: tabular-nums;
-    font-size: calc(var(--u) * 1.9);
+    font-size: var(--fs-s);
     font-weight: 600;
     color: var(--amber);
   }
   .dep-row.is-cancelled .dep__time { text-decoration: line-through; color: var(--muted-dim); }
   .dep-row.is-cancelled .dep__dest { color: var(--muted-dim); }
-  .board__empty { font-size: calc(var(--u) * 2.0); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
+  .board__empty { font-size: var(--fs-m); color: var(--muted-dim); padding: calc(var(--u) * 0.8) 0; }
 
   /* small amber dot: the weather on screen is old (fetches have been failing) */
   .stale-dot {
@@ -500,8 +504,8 @@
   }
   .lightning-alert.active { display: flex; }
   .lightning-alert__icon { font-size: calc(var(--u) * 3); line-height: 1; }
-  .lightning-alert__text { font-weight: 700; font-size: calc(var(--u) * 2.1); }
-  .lightning-alert__sub { font-size: calc(var(--u) * 1.6); color: var(--muted); margin-top: 2px; }
+  .lightning-alert__text { font-weight: 700; font-size: var(--fs-m); }
+  .lightning-alert__sub { font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
   @keyframes alertGlow {
     0%, 100% { box-shadow: 0 0 0 rgba(232,100,107,0); }
     50% { box-shadow: 0 0 20px rgba(232,100,107,0.5); }
@@ -553,7 +557,7 @@
     border-radius: calc(var(--u) * 1.4);
     background: #EAF2FF;
     color: #0B1220;
-    font-size: calc(var(--u) * 1.8);
+    font-size: var(--fs-s);
     font-weight: 600;
     line-height: 1.3;
     box-shadow: 0 6px 24px rgba(0,0,0,0.35);
@@ -769,7 +773,7 @@
 <script>
 (function(){
 
-  var VERSION = '3.2';  // long-press the bunny to see this on the tablet
+  var VERSION = '3.3';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -868,10 +872,12 @@
     }
     var p = Math.max(0, Math.min(100, Math.round(pop)));
     var num = p >= 30 ? p + '%' : '';
+    // under 10 %: no bar at all (keeps its room, so the strip doesn't jump)
+    var hide = p < 10 ? ' style="visibility:hidden"' : '';
     var fillOpacity = (0.35 + 0.65 * p / 100).toFixed(2);
     return '<div class="strip-item__pop">' +
       '<span class="pop-num">' + num + '</span>' +
-      '<span class="pop-bar"><i style="width:' + p + '%;opacity:' + fillOpacity + '"></i></span>' +
+      '<span class="pop-bar"' + hide + '><i style="width:' + p + '%;opacity:' + fillOpacity + '"></i></span>' +
       '</div>';
   }
 
@@ -967,11 +973,12 @@
   /* ---------- Clock ---------- */
   function tickClock(){
     var now = new Date();
-    var p = now.toLocaleTimeString('en-GB', { timeZone:'Europe/Helsinki', hour:'2-digit', minute:'2-digit', second:'2-digit' }).split(':');
+    var p = now.toLocaleTimeString('en-GB', { timeZone:'Europe/Helsinki', hour:'2-digit', minute:'2-digit' }).split(':');
     var weekday = now.toLocaleDateString('fi-FI', { timeZone:'Europe/Helsinki', weekday:'long' });
     weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);      // "lauantai" -> "Lauantai"
     var dayMonth = now.toLocaleDateString('fi-FI', { timeZone:'Europe/Helsinki', day:'numeric', month:'long' });   // "21. marraskuuta" 
-    document.getElementById('clockTime').innerHTML = p[0] + ':' + p[1] + '<span class="clock__sec">' + p[2] + '</span>';
+    var hm = p[0] + ':' + p[1], clockEl = document.getElementById('clockTime');
+    if (clockEl.textContent !== hm) clockEl.textContent = hm;      // no seconds: a calmer wall display
     var html = '<span class="clock__weekday">' + weekday + '</span> <span class="clock__daymonth">' + dayMonth + '</span>' +
       (flagDay() ? FLAG_SVG : '');
     var dateEl = document.getElementById('clockDate');
@@ -1197,7 +1204,7 @@
     var txt = 'Päivä <b>' + h + ' h ' + m + ' min</b>';
     if (yesterday !== null) {
       var diff = Math.round(today - yesterday);
-      txt += ', ' + (diff > 0 ? '+' + diff : diff < 0 ? '\u2212' + (-diff) : '\u00b10') + ' min';
+      txt += ' ' + (diff > 0 ? '+' + diff : diff < 0 ? '\u2212' + (-diff) : '\u00b10') + ' min';
     }
     el.innerHTML = txt;
   }
@@ -1581,7 +1588,7 @@
     }
     if (best === null) { note.textContent = ''; return; }
     var h1 = helsinkiHour(new Date(best)), h2 = h1 + 1;   // "klo 23–24" 
-    note.innerHTML = best === hourNow ? 'Halvin sähkö <b>nyt</b>' : 'Halvin <b>klo ' + h1 + '\u2013' + h2 + '</b>';
+    note.innerHTML = best === hourNow ? 'Halvin <b>nyt</b>' : 'Halvin <b>' + h1 + '\u2013' + h2 + '</b>';
     fitKani();
   }
   loadPrices();
@@ -2083,11 +2090,20 @@
       for (var i = 0; i < vals.length; i++) if (vals[i].scrollWidth > vals[i].clientWidth + 1) return true;
       return false;
     }
+    var notes = document.querySelector('.current__notes');
+    if (notes) notes.style.fontSize = '';
     var u = KANI_MAX_U;
     el.style.setProperty('--kani-h', 'calc(var(--u) * ' + u + ')');
     while (crowded() && u > KANI_MIN_U){
       u = Math.max(KANI_MIN_U, u - 0.4);
       el.style.setProperty('--kani-h', 'calc(var(--u) * ' + u.toFixed(1) + ')');
+    }
+    // still too wide with the smallest bunny (very cold + long weather text):
+    // only then make the small line under the stats a little smaller
+    var scale = 1;
+    while (notes && crowded() && scale > 0.75){
+      scale -= 0.05;
+      notes.style.fontSize = 'calc(var(--fs-xs) * ' + scale.toFixed(2) + ')';
     }
   }
 
