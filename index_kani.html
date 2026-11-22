@@ -525,7 +525,7 @@
     margin-top: calc(var(--u) * -1.2);
     margin-bottom: calc(var(--u) * -0.5);
   }
-  .kani svg, .kani-hop svg { width: 100%; height: 100%; overflow: visible; display: block; }
+  .kani svg, .kani-hop svg, .kani-giant svg { width: 100%; height: 100%; overflow: visible; display: block; }
   .kani .k-acc, .kani .k-eyes-closed, .kani-hop .k-acc, .kani-hop .k-eyes-closed,
   .kani-giant .k-acc, .kani-giant .k-eyes-closed { display: none; }
   .kani.is-hat .k-acc-hat, .kani.is-cold .k-acc-scarf,
@@ -615,11 +615,14 @@
     background: rgba(6, 9, 20, 0.6);
     animation: giantIn 0.3s ease-out both;
     overflow: hidden;
+    touch-action: none;          /* stroking the bunny mustn't scroll or zoom anything */
+    -webkit-user-select: none;
+    user-select: none;
   }
   .kani-giant.is-leaving { animation: giantOut 0.45s ease-in forwards; }
   .kani-giant__hop {
-    height: min(78vh, 96vw / 0.925);
-    width: calc(min(78vh, 96vw / 0.925) * 0.925);
+    height: min(78vh, 96vw);
+    width: min(78vh, 96vw);          /* square: the giant uses a viewBox cropped round the bunny */
     margin-bottom: 2vh;
     transform-origin: 50% 100%;
     animation: giantBounce 0.75s cubic-bezier(.3,.6,.4,1) infinite;
@@ -641,7 +644,9 @@
     color: #0B1220;
     font-size: calc(var(--u) * 5.2);
     font-weight: 700;
-    white-space: nowrap;
+    max-width: 88vw;
+    text-align: center;
+    line-height: 1.15;
     box-shadow: 0 10px 40px rgba(0,0,0,0.45);
     animation: giantSay 0.5s cubic-bezier(.2,1.6,.4,1) 0.25s both, giantShake 0.11s linear 0.75s infinite;
     transform-origin: 50% 100%;
@@ -670,6 +675,38 @@
     50%  { transform: translate(0.8%, -0.3%) rotate(1.2deg); }
     75%  { transform: translate(-0.5%, 0.4%) rotate(-0.8deg); }
     100% { transform: translate(0, 0) rotate(0deg); }
+  }
+  /* being stroked: the trembling slows down... */
+  .kani-giant.is-calming .kani-giant__shake { animation: giantShakeSoft 0.24s linear infinite; }
+  .kani-giant.is-calming .kani-giant__say { animation: giantSay 0.5s cubic-bezier(.2,1.6,.4,1) both, giantShakeSoft 0.24s linear 0.5s infinite; }
+  /* ...and stops: eyes closed, just breathing */
+  .kani-giant.is-calm .kani-giant__shake { animation: none; }
+  .kani-giant.is-calm .kani-giant__hop { animation: giantBreathe 2.6s ease-in-out infinite; }
+  .kani-giant.is-calm .kani-giant__say { animation: giantSay 0.5s cubic-bezier(.2,1.6,.4,1) both; }
+  .kani-giant.is-calm .k-eyes-open { display: none; }
+  .kani-giant.is-calm .k-eyes-closed { display: inline; }
+  @keyframes giantShakeSoft {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    50%  { transform: translate(0.3%, -0.1%) rotate(0.5deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+  @keyframes giantBreathe {
+    0%, 100% { transform: scale(1, 1); }
+    50%      { transform: scale(1.02, 0.985); }
+  }
+  /* hearts rising from where the finger strokes */
+  .kani-heart {
+    position: fixed;
+    z-index: 2200;
+    pointer-events: none;
+    font-size: calc(var(--u) * 4.2);
+    line-height: 1;
+    animation: heartUp 1.3s ease-out forwards;
+  }
+  @keyframes heartUp {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    15%  { opacity: 1; transform: translate(-50%, -80%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -320%) scale(1.15); }
   }
   @keyframes giantSay { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -773,7 +810,7 @@
 <script>
 (function(){
 
-  var VERSION = '3.3';  // long-press the bunny to see this on the tablet
+  var VERSION = '3.4';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -1992,7 +2029,8 @@
      - the bunny in the weather panel dresses for the weather and sleeps at night
      - tap the temperature or the bunny: the bunny says something
      - tap the clock 5 times in a row: carrot and bunny rain
-     - tap the date 5 times in a row: a giant bunny bounces and trembles
+     - tap the date 5 times in a row: a giant bunny bounces and trembles;
+       stroke it and it calms down (hearts, then eyes closed and still)
      - hold the bunny for a second: version number
      - 06:30-09:30 and 14:30-17:30 the bunny gives a clothing tip by itself
      - seasonal outfits (December, Independence Day, Vappu, Midsummer, Halloween)
@@ -2374,22 +2412,80 @@
 
   /* ---- tap the date (top left) 5 times in a row: a giant trembling bunny ---- */
   var dateTaps = [];
+  // The drawing leaves room on the right for the umbrella and ringette stick;
+  // for the giant, crop the view round the bunny itself so it stands centred.
+  var KANI_GIANT_SVG = KANI_SVG.replace('viewBox="0 -14 74 80"', 'viewBox="-3 -3 70 70"');
+  var HEARTS = ['💛', '❤️', '💗'];
+
   function kaniGiant(){
     if (document.querySelector('.kani-giant')) return;
     var box = document.createElement('div');
     box.className = 'kani-giant';
     box.setAttribute('aria-hidden', 'true');
     box.innerHTML = '<div class="kani-giant__sayrow"><div class="kani-giant__say">Mä ihan tärisen!</div></div>' +
-      '<div class="kani-giant__hop"><div class="kani-giant__shake">' + KANI_SVG + '</div></div>';
+      '<div class="kani-giant__hop"><div class="kani-giant__shake">' + KANI_GIANT_SVG + '</div></div>';
     document.body.appendChild(box);
-    var gone = false;
+    var say = box.querySelector('.kani-giant__say');
+    var gone = false, started = Date.now(), leaveAt = started + 6000, leaveTimer = null;
     function leave(){
       if (gone) return;
       gone = true;
-      box.className = 'kani-giant is-leaving';
+      box.classList.add('is-leaving');
       setTimeout(function(){ if (box.parentNode) box.parentNode.removeChild(box); }, 500);
     }
-    setTimeout(leave, 6000);   // taps don't close it: an extra 6th tap mustn't cut it short
+    function schedule(){
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(leave, Math.max(0, leaveAt - Date.now()));
+    }
+    schedule();   // taps don't close it: an extra 6th tap mustn't cut it short
+
+    function speak(text){
+      say.textContent = text;
+      say.style.animation = 'none';
+      say.offsetWidth;              // restart the pop-in
+      say.style.animation = '';
+    }
+    function heart(x, y){
+      var h = document.createElement('span');
+      h.className = 'kani-heart';
+      h.textContent = HEARTS[Math.floor(Math.random() * HEARTS.length)];
+      h.style.left = x + 'px';
+      h.style.top = y + 'px';
+      h.style.setProperty('--dx', Math.round(Math.random() * 60 - 30) + 'px');
+      document.body.appendChild(h);
+      setTimeout(function(){ if (h.parentNode) h.parentNode.removeChild(h); }, 1400);
+    }
+
+    // Stroking: hearts, and the trembling calms down the more it's stroked.
+    // It stays while being stroked (up to 40 s), leaving 4 s after the last stroke.
+    var rubbed = 0, stage = 0, down = false, lastX = 0, lastY = 0, lastHeart = 0;
+    function rub(amount, x, y){
+      if (gone) return;
+      rubbed += amount;
+      var now = Date.now();
+      if (now - lastHeart > 110) { heart(x, y); lastHeart = now; }
+      if (stage === 0 && rubbed > 250) { stage = 1; box.classList.add('is-calming'); speak('Ihanaa… 💛'); }
+      else if (stage === 1 && rubbed > 900) {
+        stage = 2; box.classList.remove('is-calming'); box.classList.add('is-calm');
+        speak('Kiitos! Nyt en enää tärise. 💛');
+      }
+      leaveAt = Math.min(started + 40000, Math.max(leaveAt, now + 4000));
+      schedule();
+    }
+    box.addEventListener('pointerdown', function(e){
+      down = true; lastX = e.clientX; lastY = e.clientY;
+      rub(60, e.clientX, e.clientY);            // a pat counts a little too
+    });
+    box.addEventListener('pointermove', function(e){
+      if (!down) return;
+      var d = Math.sqrt((e.clientX - lastX) * (e.clientX - lastX) + (e.clientY - lastY) * (e.clientY - lastY));
+      lastX = e.clientX; lastY = e.clientY;
+      if (d > 0) rub(d, e.clientX, e.clientY);
+    });
+    function up(){ down = false; }
+    box.addEventListener('pointerup', up);
+    box.addEventListener('pointercancel', up);
+    box.addEventListener('pointerleave', up);
   }
 
   /* ---- now and then, a bunny hops across the bottom of the screen ---- */
