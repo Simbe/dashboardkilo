@@ -810,7 +810,7 @@
 <script>
 (function(){
 
-  var VERSION = '3.4';  // long-press the bunny to see this on the tablet
+  var VERSION = '3.5';  // long-press the bunny to see this on the tablet
   var LAT = 60.2179;   // Kilo station, Espoo
   var LON = 24.7824;
 
@@ -1861,19 +1861,38 @@
   // Shown in this order: E1827 towards Leppävaara on top, E1826 towards Matinkylä below
   var BUS_STOP_CODES = ['E1827', 'E1826'];
   var BUS_STOP_NAME = 'Trillakatu';
+  // Lines that are never shown. Everything else is, also new numbers and replacement buses.
+  var HIDE_LINES = ['227K', '229'];
   var BUS_ROWS = [5, 5];     // most rows: Leppävaara, Matinkylä; fewer if they don't fit
   var HSL_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
   // Search by stop name; the two sides of the street share the name and are
   // told apart by their codes.
   var BUS_QUERY = '{ stops(name: "' + BUS_STOP_NAME + '") { code ' +
-    'alerts(types: [STOP, ROUTES]) { alertHeaderText effectiveStartDate effectiveEndDate } ' +
-    'stoptimesWithoutPatterns(numberOfDepartures: 12) ' +
+    'alerts(types: [STOP, ROUTES]) { alertHeaderText effectiveStartDate effectiveEndDate entities { __typename ... on Route { shortName } } } ' +
+    'stoptimesWithoutPatterns(numberOfDepartures: 20) ' +
     '{ scheduledDeparture realtimeDeparture realtime realtimeState serviceDay headsign trip { route { shortName } } } } }';
 
   var busDepartures = [];     // [{ stop, line, dest, ms, sched, cancelled }]
   var busOkAt = 0;
   var busError = '';
   var busTimer = null;
+
+  function isHiddenLine(name){
+    var n = String(name || '').replace(/\s+/g, '').toUpperCase();
+    for (var i = 0; i < HIDE_LINES.length; i++) if (n === String(HIDE_LINES[i]).toUpperCase()) return true;
+    return false;
+  }
+  // true when an alert names routes and every one of them is hidden
+  function onlyHiddenLines(entities){
+    var routes = 0;
+    for (var i = 0; i < (entities || []).length; i++){
+      var e = entities[i];
+      if (!e || e.__typename !== 'Route') continue;
+      routes++;
+      if (!isHiddenLine(e.shortName)) return false;
+    }
+    return routes > 0;
+  }
 
   function loadBuses(){
     if (!HSL_API_KEY) { busError = 'nokey'; renderBuses(); return; }
@@ -1899,12 +1918,14 @@
           if (!tx || alerts.indexOf(tx) >= 0) continue;
           if (al[a].effectiveStartDate && al[a].effectiveStartDate > nowS) continue;
           if (al[a].effectiveEndDate && al[a].effectiveEndDate < nowS) continue;
+          if (onlyHiddenLines(al[a].entities)) continue;   // e.g. a notice about line 229 only
           alerts.push(tx);
         }
         var times = stop.stoptimesWithoutPatterns || [];
         for (var j = 0; j < times.length; j++){
           var st = times[j];
           if (typeof st.serviceDay !== 'number' || typeof st.scheduledDeparture !== 'number') continue;
+          if (isHiddenLine(st.trip && st.trip.route && st.trip.route.shortName)) continue;
           // times are seconds since the start of the service day
           var sched = (st.serviceDay + st.scheduledDeparture) * 1000;
           var est = (st.realtime && typeof st.realtimeDeparture === 'number')
